@@ -1,8 +1,34 @@
-#ifndef _SYS_H
-#define _SYS_H
-#include "stm32h7xx.h"
+/**
+  ******************************************************************************
+  * File Name          : SYS.h
+  * Description        : This file provides code for the configuration
+  *                      of the SYS instances.
+  ******************************************************************************
+  * @attention
+  *
+  * <h2><center>&copy; Copyright (c) 2019 STMicroelectronics.
+  * All rights reserved.</center></h2>
+  *
+  * This software component is licensed by ST under BSD 3-Clause license,
+  * the "License"; You may not use this file except in compliance with the
+  * License. You may obtain a copy of the License at:
+  *                        opensource.org/licenses/BSD-3-Clause
+  *
+  ******************************************************************************
+  */
+/* Define to prevent recursive inclusion -------------------------------------*/
+#ifndef __sys_H
+#define __sys_H
+#ifdef __cplusplus
+ extern "C" {
+#endif
+
+/* Includes ------------------------------------------------------------------*/
+#include "main.h"
+
+/* USER CODE BEGIN Includes */
+	 #include "stm32h7xx.h"
 #include "core_cm7.h"
-#include "stm32h7xx_hal.h"
 //////////////////////////////////////////////////////////////////////////////////	 
 //本程序只供学习使用，未经作者许可，不得用于其它任何用途
 //ALIENTEK STM32H7开发板
@@ -78,6 +104,29 @@ void INTX_ENABLE(void);	//开启所有中断
 void MSR_MSP(u32 addr);	//设置堆栈地址 
 #endif
 
+/* USER CODE END Includes */
 
+/* USER CODE BEGIN Private defines */
+
+/* USER CODE END Private defines */
+
+void MX_SYS_Init(void);
+
+/* USER CODE BEGIN Prototypes */
+
+/* USER CODE END Prototypes */
+
+#ifdef __cplusplus
+}
 #endif
+#endif /*__ sys_H */
 
+/**
+  * @}
+  */
+
+/**
+  * @}
+  */
+
+/************************ (C) COPYRIGHT STMicroelectronics *****END OF FILE****/

@@ -335,7 +335,7 @@
               <MiscControls></MiscControls>
               <Define>USE_HAL_DRIVER,STM32H750xx,ARM_MATH_CM7,__CC_ARM,ARM_MATH_MATRIX_CHECK,ARM_MATH_ROUNDING</Define>
               <Undefine></Undefine>
-              <IncludePath>../Inc;      ../Drivers/STM32H7xx_HAL_Driver/Inc;      ../Drivers/STM32H7xx_HAL_Driver/Inc/Legacy;      ../Drivers/CMSIS/Device/ST/STM32H7xx/Include;      ../Drivers/CMSIS/Include</IncludePath>
+              <IncludePath>../Inc;../Drivers/STM32H7xx_HAL_Driver/Inc;../Drivers/STM32H7xx_HAL_Driver/Inc/Legacy;../Drivers/CMSIS/Device/ST/STM32H7xx/Include;../Drivers/CMSIS/Include;..\USMART;..\STMFLASH</IncludePath>
             </VariousControls>
           </Cads>
           <Aads>
@@ -390,9 +390,54 @@
           <GroupName>Application/User</GroupName>
           <Files>
             <File>
+              <FileName>test.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>.\test.c</FilePath>
+            </File>
+            <File>
+              <FileName>delay.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\Src\delay.c</FilePath>
+            </File>
+            <File>
+              <FileName>arm_cortexM7lfdp_math.lib</FileName>
+              <FileType>4</FileType>
+              <FilePath>..\Src\arm_cortexM7lfdp_math.lib</FilePath>
+            </File>
+            <File>
               <FileName>main.c</FileName>
               <FileType>1</FileType>
               <FilePath>../Src/main.c</FilePath>
+            </File>
+            <File>
+              <FileName>gpio.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>../Src/gpio.c</FilePath>
+            </File>
+            <File>
+              <FileName>adc.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>../Src/adc.c</FilePath>
+            </File>
+            <File>
+              <FileName>rtc.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>../Src/rtc.c</FilePath>
+            </File>
+            <File>
+              <FileName>sys.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\Src\sys.c</FilePath>
+            </File>
+            <File>
+              <FileName>tim.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>../Src/tim.c</FilePath>
+            </File>
+            <File>
+              <FileName>usart.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>../Src/usart.c</FilePath>
             </File>
             <File>
               <FileName>stm32h7xx_it.c</FileName>
@@ -405,24 +450,24 @@
               <FilePath>../Src/stm32h7xx_hal_msp.c</FilePath>
             </File>
             <File>
-              <FileName>test.c</FileName>
+              <FileName>usmart.c</FileName>
               <FileType>1</FileType>
-              <FilePath>.\test.c</FilePath>
+              <FilePath>..\USMART\usmart.c</FilePath>
             </File>
             <File>
-              <FileName>delay.c</FileName>
+              <FileName>usmart_config.c</FileName>
               <FileType>1</FileType>
-              <FilePath>..\Src\delay.c</FilePath>
+              <FilePath>..\USMART\usmart_config.c</FilePath>
             </File>
             <File>
-              <FileName>sys.c</FileName>
+              <FileName>usmart_str.c</FileName>
               <FileType>1</FileType>
-              <FilePath>..\Src\sys.c</FilePath>
+              <FilePath>..\USMART\usmart_str.c</FilePath>
             </File>
             <File>
-              <FileName>arm_cortexM7lfdp_math.lib</FileName>
-              <FileType>4</FileType>
-              <FilePath>..\Src\arm_cortexM7lfdp_math.lib</FilePath>
+              <FileName>stmflash.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\STMFLASH\stmflash.c</FilePath>
             </File>
           </Files>
         </Group>
@@ -518,6 +563,16 @@
               <FileName>stm32h7xx_hal_exti.c</FileName>
               <FileType>1</FileType>
               <FilePath>../Drivers/STM32H7xx_HAL_Driver/Src/stm32h7xx_hal_exti.c</FilePath>
+            </File>
+            <File>
+              <FileName>stm32h7xx_hal_rtc.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>../Drivers/STM32H7xx_HAL_Driver/Src/stm32h7xx_hal_rtc.c</FilePath>
+            </File>
+            <File>
+              <FileName>stm32h7xx_hal_rtc_ex.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>../Drivers/STM32H7xx_HAL_Driver/Src/stm32h7xx_hal_rtc_ex.c</FilePath>
             </File>
             <File>
               <FileName>stm32h7xx_hal_tim.c</FileName>

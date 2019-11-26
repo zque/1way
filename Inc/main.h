@@ -29,6 +29,7 @@ extern "C" {
 
 /* Includes ------------------------------------------------------------------*/
 #include "stm32h7xx_hal.h"
+#include "stm32h7xx_hal.h"
 
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
@@ -54,7 +55,8 @@ extern "C" {
 void Error_Handler(void);
 
 /* USER CODE BEGIN EFP */
-
+void set_I(int i);
+void set_limitA(int a);
 /* USER CODE END EFP */
 
 /* Private defines -----------------------------------------------------------*/
@@ -82,9 +84,13 @@ void Error_Handler(void);
 #define ON_GPIO_Port GPIOB
 #define OFF_Pin GPIO_PIN_9
 #define OFF_GPIO_Port GPIOB
+#define KEY1_Pin GPIO_PIN_0
+#define KEY1_GPIO_Port GPIOE
 #define LED1_Pin GPIO_PIN_1
 #define LED1_GPIO_Port GPIOE
 /* USER CODE BEGIN Private defines */
+extern uint8_t USART_RX_STA;
+extern uint8_t USART_RX_BUF[1];
 
 /* USER CODE END Private defines */
 

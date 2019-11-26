@@ -1,8 +1,8 @@
 /**
   ******************************************************************************
-  * File Name          : SYS.c
+  * File Name          : ADC.h
   * Description        : This file provides code for the configuration
-  *                      of the SYS instances.
+  *                      of the ADC instances.
   ******************************************************************************
   * @attention
   *
@@ -16,22 +16,43 @@
   *
   ******************************************************************************
   */
+/* Define to prevent recursive inclusion -------------------------------------*/
+#ifndef __adc_H
+#define __adc_H
+#ifdef __cplusplus
+ extern "C" {
+#endif
 
 /* Includes ------------------------------------------------------------------*/
-#include "sys.h"
+#include "main.h"
 
-/* USER CODE BEGIN 0 */
+/* USER CODE BEGIN Includes */
 
-/* USER CODE END 0 */
+/* USER CODE END Includes */
 
-/* SYS init function */
-void MX_SYS_Init(void)
-{
+extern ADC_HandleTypeDef hadc3;
 
+/* USER CODE BEGIN Private defines */
+
+/* USER CODE END Private defines */
+
+void MX_ADC3_Init(void);
+
+/* USER CODE BEGIN Prototypes */
+
+/* USER CODE END Prototypes */
+
+#ifdef __cplusplus
 }
+#endif
+#endif /*__ adc_H */
 
-/* USER CODE BEGIN 1 */
+/**
+  * @}
+  */
 
-/* USER CODE END 1 */
+/**
+  * @}
+  */
 
 /************************ (C) COPYRIGHT STMicroelectronics *****END OF FILE****/

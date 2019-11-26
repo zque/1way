@@ -1,8 +1,8 @@
 /**
   ******************************************************************************
-  * File Name          : SYS.c
+  * File Name          : USART.h
   * Description        : This file provides code for the configuration
-  *                      of the SYS instances.
+  *                      of the USART instances.
   ******************************************************************************
   * @attention
   *
@@ -16,22 +16,45 @@
   *
   ******************************************************************************
   */
+/* Define to prevent recursive inclusion -------------------------------------*/
+#ifndef __usart_H
+#define __usart_H
+#ifdef __cplusplus
+ extern "C" {
+#endif
 
 /* Includes ------------------------------------------------------------------*/
-#include "sys.h"
+#include "main.h"
 
-/* USER CODE BEGIN 0 */
+/* USER CODE BEGIN Includes */
+#include "stdio.h"
+/* USER CODE END Includes */
 
-/* USER CODE END 0 */
+extern UART_HandleTypeDef huart1;
+extern UART_HandleTypeDef huart2;
 
-/* SYS init function */
-void MX_SYS_Init(void)
-{
+/* USER CODE BEGIN Private defines */
 
+/* USER CODE END Private defines */
+
+void MX_USART1_UART_Init(void);
+void MX_USART2_UART_Init(void);
+
+/* USER CODE BEGIN Prototypes */
+
+/* USER CODE END Prototypes */
+
+#ifdef __cplusplus
 }
+#endif
+#endif /*__ usart_H */
 
-/* USER CODE BEGIN 1 */
+/**
+  * @}
+  */
 
-/* USER CODE END 1 */
+/**
+  * @}
+  */
 
 /************************ (C) COPYRIGHT STMicroelectronics *****END OF FILE****/

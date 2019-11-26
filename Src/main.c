@@ -20,6 +20,11 @@
 
 /* Includes ------------------------------------------------------------------*/
 #include "main.h"
+#include "adc.h"
+#include "rtc.h"
+#include "tim.h"
+#include "usart.h"
+#include "gpio.h"
 
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
@@ -31,9 +36,13 @@
 #include "sys.h"
 #include "delay.h"
 #include "arm_math.h"
+#include "usmart.h"
+#include "stmflash.h"
 #define FFT_LENGTH 		1024
 #define adc2i					670							//adc转化成电流i的比值
 #define bee				HAL_GPIO_To
+#define FLASH_SAVE_ADDR  0X08020000 	//设置FLASH 保存地址(必须为4的倍数，且所在扇区,要大于本代码所占用到的扇区.
+										//否则,写操作的时候,可能会导致擦除整个扇区,从而引起部分程序丢失.引起死机.
 
 /* USER CODE END Includes */
 
@@ -52,18 +61,11 @@
 /* USER CODE END PM */
 
 /* Private variables ---------------------------------------------------------*/
-ADC_HandleTypeDef hadc3;
-
-TIM_HandleTypeDef htim1;
-
-UART_HandleTypeDef huart1;
-UART_HandleTypeDef huart2;
 
 /* USER CODE BEGIN PV */
 int i=0;							//for循环变量
 int j=0;							//for循环变量
 int k=0;							//for循环变量
-int limit =200  ;						//设置报警突变电流
 int sw=0;							//切换前后波形数据控制变量		
 int count=0;
 float amp_value=0.0;				//限制漏电电流转换为幅值有效值
@@ -85,6 +87,16 @@ float I1_error=0;
 float I0_error=0;
 int printf_flag=1;
 uint8_t input_read ;
+u32 adc[100];
+u8 USART_RX_STA;
+u8 USART_RX_BUF[1];
+RTC_DateTypeDef sdatestructure;
+RTC_TimeTypeDef stimestructure;
+int year,month,date;
+int hour,minute,second;
+int flash[2];
+int limit;
+int I;				
 
 //struct {
 //	int K1_Pin:1;
@@ -130,13 +142,8 @@ int flag=0;
 
 /* Private function prototypes -----------------------------------------------*/
 void SystemClock_Config(void);
-static void MX_TIM1_Init(void);
-static void MX_GPIO_Init(void);
-static void MX_ADC3_Init(void);
-static void MX_USART1_UART_Init(void);
-static void MX_USART2_UART_Init(void);
 /* USER CODE BEGIN PFP */
-void SET4G(void);
+//void SET4G(void);
 void sort(int* a,int len);
 int get_ADC(ADC_HandleTypeDef adc);
 void filter_A(int* a);
@@ -189,8 +196,9 @@ int main(void)
   MX_ADC3_Init();
   MX_USART1_UART_Init();
   MX_USART2_UART_Init();
+  MX_RTC_Init();
   /* USER CODE BEGIN 2 */
-  //HAL_ADCEx_Calibration_Start(&hadc1,ADC_CALIB_OFFSET,ADC_DIFFERENTIAL_ENDED);
+  HAL_ADCEx_Calibration_Start(&hadc3,ADC_CALIB_OFFSET,ADC_DIFFERENTIAL_ENDED);
   
  // HAL_TIM_Base_Start_IT(&htim1);
   delay_init(480);
@@ -200,7 +208,10 @@ int main(void)
   HAL_TIM_Base_Start_IT(&htim1);
   arm_cfft_radix4_init_f32(&scfft,FFT_LENGTH,0,1);
   delay_ms(1000);
-	filter_index = filter_len/2;
+  filter_index = filter_len/2;
+  
+ // HAL_ADC_Start(&hadc3);
+ // HAL_ADC_Start_DMA(&hadc3,adc,100);
   amp_value=(adc2i*limit);			//限制漏电电流转换为波形有效幅值
 									//频谱幅值与波形有效值关系： 		波形有效值=频谱幅值*2/FFT_LEANGTH
 									//波形有效值与漏电电流关系：		ADC测得电压=参考电压(3.3)/(ADC分辨率/2)*波形有效值
@@ -217,25 +228,25 @@ int main(void)
   while (1)
   {
     /* USER CODE END WHILE */
-	
+
     /* USER CODE BEGIN 3 */
 		sw=!sw;
-		
-	
-
+//		HAL_ADC_Start(&hadc3);
+//		HAL_ADC_PollForConversion(&hadc3,0xffff);
+//		printf("%i\r\n",HAL_ADC_GetValue(&hadc3));
 
 
 
 //**************************************ADC采样***************************************************//		
 		if(sw){	for(i=0;i<1030;i++){for(k=0;k<filter_len;k++)filter1[k]=get_ADC(hadc3);
 																adc1[i]=filter_M(filter1,filter_len);
-																delay_us(20);}
+																delay_us(85);}
 						filter_A(adc1);
 																		
 		}else{for(i=0;i<1030;i++){for(k=0;k<filter_len;k++)filter1[k]=get_ADC(hadc3);
-																adc1[i]=filter_M(filter1,filter_len);
-																delay_us(20);}
-						filter_A(adc1);
+																adc0[i]=filter_M(filter1,filter_len);
+																delay_us(85);}
+						filter_A(adc0);
 		}
 		
 		
@@ -294,6 +305,10 @@ int main(void)
 						delay_ms(100);
 						printf("漏电电流11：%05i\t漏电电流10：%05i\t突变电流1：%05i",(int)Imax1/adc2i,(int)Imax0/adc2i,(har/adc2i));
 								har=0;}
+//		for(i=0;i<1024;i++)printf("%i\r\n",adc0[i]);
+//		printf("*********************************");
+		printf("%f\r\n",Imax1/adc2i);
+		start=1;
   }
   /* USER CODE END 3 */
 }
@@ -321,8 +336,9 @@ void SystemClock_Config(void)
   __HAL_RCC_PLL_PLLSOURCE_CONFIG(RCC_PLLSOURCE_HSE);
   /** Initializes the CPU, AHB and APB busses clocks 
   */
-  RCC_OscInitStruct.OscillatorType = RCC_OSCILLATORTYPE_HSE;
+  RCC_OscInitStruct.OscillatorType = RCC_OSCILLATORTYPE_LSI|RCC_OSCILLATORTYPE_HSE;
   RCC_OscInitStruct.HSEState = RCC_HSE_ON;
+  RCC_OscInitStruct.LSIState = RCC_LSI_ON;
   RCC_OscInitStruct.PLL.PLLState = RCC_PLL_ON;
   RCC_OscInitStruct.PLL.PLLSource = RCC_PLLSOURCE_HSE;
   RCC_OscInitStruct.PLL.PLLM = 2;
@@ -354,8 +370,8 @@ void SystemClock_Config(void)
   {
     Error_Handler();
   }
-  PeriphClkInitStruct.PeriphClockSelection = RCC_PERIPHCLK_USART2|RCC_PERIPHCLK_USART1
-                              |RCC_PERIPHCLK_ADC;
+  PeriphClkInitStruct.PeriphClockSelection = RCC_PERIPHCLK_RTC|RCC_PERIPHCLK_USART2
+                              |RCC_PERIPHCLK_USART1|RCC_PERIPHCLK_ADC;
   PeriphClkInitStruct.PLL2.PLL2M = 32;
   PeriphClkInitStruct.PLL2.PLL2N = 150;
   PeriphClkInitStruct.PLL2.PLL2P = 2;
@@ -367,260 +383,11 @@ void SystemClock_Config(void)
   PeriphClkInitStruct.Usart234578ClockSelection = RCC_USART234578CLKSOURCE_D2PCLK1;
   PeriphClkInitStruct.Usart16ClockSelection = RCC_USART16CLKSOURCE_D2PCLK2;
   PeriphClkInitStruct.AdcClockSelection = RCC_ADCCLKSOURCE_PLL2;
+  PeriphClkInitStruct.RTCClockSelection = RCC_RTCCLKSOURCE_LSI;
   if (HAL_RCCEx_PeriphCLKConfig(&PeriphClkInitStruct) != HAL_OK)
   {
     Error_Handler();
   }
-}
-
-/**
-  * @brief ADC3 Initialization Function
-  * @param None
-  * @retval None
-  */
-static void MX_ADC3_Init(void)
-{
-
-  /* USER CODE BEGIN ADC3_Init 0 */
-
-  /* USER CODE END ADC3_Init 0 */
-
-  ADC_ChannelConfTypeDef sConfig = {0};
-
-  /* USER CODE BEGIN ADC3_Init 1 */
-
-  /* USER CODE END ADC3_Init 1 */
-  /** Common config 
-  */
-  hadc3.Instance = ADC3;
-  hadc3.Init.ClockPrescaler = ADC_CLOCK_ASYNC_DIV1;
-  hadc3.Init.Resolution = ADC_RESOLUTION_16B;
-  hadc3.Init.ScanConvMode = ADC_SCAN_DISABLE;
-  hadc3.Init.EOCSelection = ADC_EOC_SINGLE_CONV;
-  hadc3.Init.LowPowerAutoWait = DISABLE;
-  hadc3.Init.ContinuousConvMode = DISABLE;
-  hadc3.Init.NbrOfConversion = 1;
-  hadc3.Init.DiscontinuousConvMode = DISABLE;
-  hadc3.Init.ExternalTrigConv = ADC_SOFTWARE_START;
-  hadc3.Init.ExternalTrigConvEdge = ADC_EXTERNALTRIGCONVEDGE_NONE;
-  hadc3.Init.ConversionDataManagement = ADC_CONVERSIONDATA_DR;
-  hadc3.Init.Overrun = ADC_OVR_DATA_PRESERVED;
-  hadc3.Init.LeftBitShift = ADC_LEFTBITSHIFT_NONE;
-  hadc3.Init.OversamplingMode = DISABLE;
-  if (HAL_ADC_Init(&hadc3) != HAL_OK)
-  {
-    Error_Handler();
-  }
-  /** Configure Regular Channel 
-  */
-  sConfig.Channel = ADC_CHANNEL_1;
-  sConfig.Rank = ADC_REGULAR_RANK_1;
-  sConfig.SamplingTime = ADC_SAMPLETIME_1CYCLE_5;
-  sConfig.SingleDiff = ADC_DIFFERENTIAL_ENDED;
-  sConfig.OffsetNumber = ADC_OFFSET_NONE;
-  sConfig.Offset = 0;
-  if (HAL_ADC_ConfigChannel(&hadc3, &sConfig) != HAL_OK)
-  {
-    Error_Handler();
-  }
-  /* USER CODE BEGIN ADC3_Init 2 */
-
-  /* USER CODE END ADC3_Init 2 */
-
-}
-
-/**
-  * @brief TIM1 Initialization Function
-  * @param None
-  * @retval None
-  */
-static void MX_TIM1_Init(void)
-{
-
-  /* USER CODE BEGIN TIM1_Init 0 */
-
-  /* USER CODE END TIM1_Init 0 */
-
-  TIM_ClockConfigTypeDef sClockSourceConfig = {0};
-  TIM_MasterConfigTypeDef sMasterConfig = {0};
-
-  /* USER CODE BEGIN TIM1_Init 1 */
-
-  /* USER CODE END TIM1_Init 1 */
-  htim1.Instance = TIM1;
-  htim1.Init.Prescaler = 480;
-  htim1.Init.CounterMode = TIM_COUNTERMODE_UP;
-  htim1.Init.Period = 1000;
-  htim1.Init.ClockDivision = TIM_CLOCKDIVISION_DIV1;
-  htim1.Init.RepetitionCounter = 0;
-  htim1.Init.AutoReloadPreload = TIM_AUTORELOAD_PRELOAD_DISABLE;
-  if (HAL_TIM_Base_Init(&htim1) != HAL_OK)
-  {
-    Error_Handler();
-  }
-  sClockSourceConfig.ClockSource = TIM_CLOCKSOURCE_INTERNAL;
-  if (HAL_TIM_ConfigClockSource(&htim1, &sClockSourceConfig) != HAL_OK)
-  {
-    Error_Handler();
-  }
-  sMasterConfig.MasterOutputTrigger = TIM_TRGO_RESET;
-  sMasterConfig.MasterOutputTrigger2 = TIM_TRGO2_RESET;
-  sMasterConfig.MasterSlaveMode = TIM_MASTERSLAVEMODE_DISABLE;
-  if (HAL_TIMEx_MasterConfigSynchronization(&htim1, &sMasterConfig) != HAL_OK)
-  {
-    Error_Handler();
-  }
-  /* USER CODE BEGIN TIM1_Init 2 */
-
-  /* USER CODE END TIM1_Init 2 */
-
-}
-
-/**
-  * @brief USART1 Initialization Function
-  * @param None
-  * @retval None
-  */
-static void MX_USART1_UART_Init(void)
-{
-
-  /* USER CODE BEGIN USART1_Init 0 */
-
-  /* USER CODE END USART1_Init 0 */
-
-  /* USER CODE BEGIN USART1_Init 1 */
-
-  /* USER CODE END USART1_Init 1 */
-  huart1.Instance = USART1;
-  huart1.Init.BaudRate = 115200;
-  huart1.Init.WordLength = UART_WORDLENGTH_8B;
-  huart1.Init.StopBits = UART_STOPBITS_1;
-  huart1.Init.Parity = UART_PARITY_NONE;
-  huart1.Init.Mode = UART_MODE_TX_RX;
-  huart1.Init.HwFlowCtl = UART_HWCONTROL_NONE;
-  huart1.Init.OverSampling = UART_OVERSAMPLING_16;
-  huart1.Init.OneBitSampling = UART_ONE_BIT_SAMPLE_DISABLE;
-  huart1.Init.ClockPrescaler = UART_PRESCALER_DIV1;
-  huart1.AdvancedInit.AdvFeatureInit = UART_ADVFEATURE_NO_INIT;
-  if (HAL_UART_Init(&huart1) != HAL_OK)
-  {
-    Error_Handler();
-  }
-  if (HAL_UARTEx_SetTxFifoThreshold(&huart1, UART_TXFIFO_THRESHOLD_1_8) != HAL_OK)
-  {
-    Error_Handler();
-  }
-  if (HAL_UARTEx_SetRxFifoThreshold(&huart1, UART_RXFIFO_THRESHOLD_1_8) != HAL_OK)
-  {
-    Error_Handler();
-  }
-  if (HAL_UARTEx_DisableFifoMode(&huart1) != HAL_OK)
-  {
-    Error_Handler();
-  }
-  /* USER CODE BEGIN USART1_Init 2 */
-
-  /* USER CODE END USART1_Init 2 */
-
-}
-
-/**
-  * @brief USART2 Initialization Function
-  * @param None
-  * @retval None
-  */
-static void MX_USART2_UART_Init(void)
-{
-
-  /* USER CODE BEGIN USART2_Init 0 */
-
-  /* USER CODE END USART2_Init 0 */
-
-  /* USER CODE BEGIN USART2_Init 1 */
-
-  /* USER CODE END USART2_Init 1 */
-  huart2.Instance = USART2;
-  huart2.Init.BaudRate = 115200;
-  huart2.Init.WordLength = UART_WORDLENGTH_8B;
-  huart2.Init.StopBits = UART_STOPBITS_1;
-  huart2.Init.Parity = UART_PARITY_NONE;
-  huart2.Init.Mode = UART_MODE_TX_RX;
-  huart2.Init.HwFlowCtl = UART_HWCONTROL_NONE;
-  huart2.Init.OverSampling = UART_OVERSAMPLING_16;
-  huart2.Init.OneBitSampling = UART_ONE_BIT_SAMPLE_DISABLE;
-  huart2.Init.ClockPrescaler = UART_PRESCALER_DIV1;
-  huart2.AdvancedInit.AdvFeatureInit = UART_ADVFEATURE_NO_INIT;
-  if (HAL_UART_Init(&huart2) != HAL_OK)
-  {
-    Error_Handler();
-  }
-  if (HAL_UARTEx_SetTxFifoThreshold(&huart2, UART_TXFIFO_THRESHOLD_1_8) != HAL_OK)
-  {
-    Error_Handler();
-  }
-  if (HAL_UARTEx_SetRxFifoThreshold(&huart2, UART_RXFIFO_THRESHOLD_1_8) != HAL_OK)
-  {
-    Error_Handler();
-  }
-  if (HAL_UARTEx_DisableFifoMode(&huart2) != HAL_OK)
-  {
-    Error_Handler();
-  }
-  /* USER CODE BEGIN USART2_Init 2 */
-
-  /* USER CODE END USART2_Init 2 */
-
-}
-
-/**
-  * @brief GPIO Initialization Function
-  * @param None
-  * @retval None
-  */
-static void MX_GPIO_Init(void)
-{
-  GPIO_InitTypeDef GPIO_InitStruct = {0};
-
-  /* GPIO Ports Clock Enable */
-  __HAL_RCC_GPIOE_CLK_ENABLE();
-  __HAL_RCC_GPIOC_CLK_ENABLE();
-  __HAL_RCC_GPIOH_CLK_ENABLE();
-  __HAL_RCC_GPIOA_CLK_ENABLE();
-  __HAL_RCC_GPIOB_CLK_ENABLE();
-
-  /*Configure GPIO pin Output Level */
-  HAL_GPIO_WritePin(GPIOE, LED2_Pin|LED3_Pin|LED1_Pin, GPIO_PIN_RESET);
-
-  /*Configure GPIO pin Output Level */
-  HAL_GPIO_WritePin(GPIOA, SIM_RST_Pin|RE_Pin|BEEP_Pin|KM1_Pin, GPIO_PIN_RESET);
-
-  /*Configure GPIO pin Output Level */
-  HAL_GPIO_WritePin(GPIOB, STOP_Pin|FIN_Pin|TKOUT_Pin|M1_Pin 
-                          |ON_Pin|OFF_Pin, GPIO_PIN_RESET);
-
-  /*Configure GPIO pins : LED2_Pin LED3_Pin LED1_Pin */
-  GPIO_InitStruct.Pin = LED2_Pin|LED3_Pin|LED1_Pin;
-  GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
-  GPIO_InitStruct.Pull = GPIO_NOPULL;
-  GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
-  HAL_GPIO_Init(GPIOE, &GPIO_InitStruct);
-
-  /*Configure GPIO pins : SIM_RST_Pin RE_Pin BEEP_Pin KM1_Pin */
-  GPIO_InitStruct.Pin = SIM_RST_Pin|RE_Pin|BEEP_Pin|KM1_Pin;
-  GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
-  GPIO_InitStruct.Pull = GPIO_NOPULL;
-  GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
-  HAL_GPIO_Init(GPIOA, &GPIO_InitStruct);
-
-  /*Configure GPIO pins : STOP_Pin FIN_Pin TKOUT_Pin M1_Pin 
-                           ON_Pin OFF_Pin */
-  GPIO_InitStruct.Pin = STOP_Pin|FIN_Pin|TKOUT_Pin|M1_Pin 
-                          |ON_Pin|OFF_Pin;
-  GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
-  GPIO_InitStruct.Pull = GPIO_NOPULL;
-  GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
-  HAL_GPIO_Init(GPIOB, &GPIO_InitStruct);
-
 }
 
 /* USER CODE BEGIN 4 */
@@ -631,51 +398,56 @@ void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart)
   /* NOTE: This function Should not be modified, when the callback is needed,
            the HAL_UART_TxCpltCallback could be implemented in the user file
    */
-	if(huart->Instance == USART2){	if(Uart2_Rx_Cnt >= 255){
-										Uart2_Rx_Cnt = 0;
-										memset(Uart2_RxBuff,0x00,sizeof(Uart2_RxBuff));
-										HAL_UART_Transmit(&huart2, (uint8_t *)&cAlmStr, sizeof(cAlmStr),0xFFFF);}
-									else{
-										Uart2_RxBuff[Uart2_Rx_Cnt++] = aRxBuffer2;   //接收数据转存
-										if(aRxBuffer2==0x06)	time_out=0;
-										if((Uart2_RxBuff[Uart2_Rx_Cnt-1] == 0x0A)&&(Uart2_RxBuff[Uart2_Rx_Cnt-2] == 0x0D)) //判断结束位
-										{	
-//											HAL_GPIO_WritePin(RE_GPIO_Port,RE_Pin,GPIO_PIN_SET);
-//											HAL_UART_Transmit(&huart3, (uint8_t *)&Uart2_RxBuff, Uart2_Rx_Cnt,0xFFFF);//将串口2收到的信息发送到485串口
-//											HAL_GPIO_WritePin(RE_GPIO_Port,RE_Pin,GPIO_PIN_RESET);
-											if((Uart2_RxBuff[0] == 0x50)||(Uart2_RxBuff[1] == 0x42))SET4G();// 判断接收的消息为 PB DONE 时初始化4G模块
-											Uart2_Rx_Cnt = 0;
-											memset(Uart2_RxBuff,0x00,sizeof(Uart2_RxBuff)); //清空数组
-										}
-									}
+	if(huart->Instance==USART1)//如果是串口1
+	{
+		if(aRxBuffer1==0x23)USART_RX_STA|=0x8000;	//接收完成了 
+		if((USART_RX_STA&0x8000)==0)//接收未完成
+		{
+			if(USART_RX_STA&0x4000)//接收到了0x0d
+			{
+				if(aRxBuffer1!=0x0a)USART_RX_STA=0;//接收错误,重新开始
+				else USART_RX_STA=0;//USART_RX_STA|=0x8000;	//接收完成了 
+			}
+			else //还没收到0X0D
+			{	
+				if(aRxBuffer1==0x0d)USART_RX_STA|=0x4000;
+				else
+				{
+					USART_RX_BUF[USART_RX_STA&0X3FFF]=aRxBuffer1 ;
+					USART_RX_STA++;
+					if(USART_RX_STA>(200-1))USART_RX_STA=0;//接收数据错误,重新开始接收	  
+				}		 
+			}
+			
+		}
 
 									HAL_UART_Receive_IT(&huart2, (uint8_t *)&aRxBuffer2, 1);}   //再开启接收中断
-	if(huart->Instance == USART3){if(Uart3_Rx_Cnt >= 255)  //溢出判断
-									{
-										Uart3_Rx_Cnt = 0;
-										memset(Uart3_RxBuff,0x00,sizeof(Uart3_RxBuff));
-										HAL_UART_Transmit(&huart2, (uint8_t *)&cAlmStr, sizeof(cAlmStr),0xFFFF);	
-									}
-									else
-									{
-										Uart3_RxBuff[Uart3_Rx_Cnt++] = aRxBuffer1;   //接收数据转存
-											//HAL_GPIO_TogglePin(BEE_GPIO_Port,BEE_Pin);
-										if(aRxBuffer1==0x06){	printf_flag=0;
-																					HAL_GPIO_WritePin(RE_GPIO_Port,RE_Pin,GPIO_PIN_SET);
-																					for (i=0;i<1024;i++){printf("%f\t%f\r\n",adc1_error[i],adc0_error[i]);}
-																					printf("相似度：%f\t漏电值1：%f\t漏电值0：%f\t突变值：%i\r\n",cos0,I1_error/adc2i,I0_error/adc2i,har/adc2i);
-																					HAL_GPIO_WritePin(RE_GPIO_Port,RE_Pin,GPIO_PIN_RESET);
-																					printf_flag=1;
-																					}
-										if((Uart3_RxBuff[Uart3_Rx_Cnt-1] == 0x0A)&&(Uart3_RxBuff[Uart3_Rx_Cnt-2] == 0x0D)) //判断结束位
-										{
-//											HAL_UART_Transmit(&huart2, (uint8_t *)&Uart3_RxBuff, Uart3_Rx_Cnt,0xFFFF);//将485串口收到的信息发送到串口2
-											Uart3_Rx_Cnt = 0;
-											memset(Uart3_RxBuff,0x00,sizeof(Uart3_RxBuff)); //清空数组
-										}
-									}
-									HAL_UART_Receive_IT(&huart1, (uint8_t *)&aRxBuffer1, 1);
-									HAL_UART_Receive_IT(&huart2, (uint8_t *)&aRxBuffer2, 1);}
+//	if(huart->Instance == USART3){if(Uart3_Rx_Cnt >= 255)  //溢出判断
+//									{
+//										Uart3_Rx_Cnt = 0;
+//										memset(Uart3_RxBuff,0x00,sizeof(Uart3_RxBuff));
+//										HAL_UART_Transmit(&huart2, (uint8_t *)&cAlmStr, sizeof(cAlmStr),0xFFFF);	
+//									}
+//									else
+//									{
+//										Uart3_RxBuff[Uart3_Rx_Cnt++] = aRxBuffer1;   //接收数据转存
+//											//HAL_GPIO_TogglePin(BEE_GPIO_Port,BEE_Pin);
+//										if(aRxBuffer1==0x06){	printf_flag=0;
+//																					HAL_GPIO_WritePin(RE_GPIO_Port,RE_Pin,GPIO_PIN_SET);
+//																					for (i=0;i<1024;i++){printf("%f\t%f\r\n",adc1_error[i],adc0_error[i]);}
+//															                                  						printf("相似度：%f\t漏电值1：%f\t漏电值0：%f\t突变值：%i\r\n",cos0,I1_error/adc2i,I0_error/adc2i,har/adc2i);
+//																					HAL_GPIO_WritePin(RE_GPIO_Port,RE_Pin,GPIO_PIN_RESET);
+//																					printf_flag=1;
+//																					}
+//										if((Uart3_RxBuff[Uart3_Rx_Cnt-1] == 0x0A)&&(Uart3_RxBuff[Uart3_Rx_Cnt-2] == 0x0D)) //判断结束位
+//										{
+////											HAL_UART_Transmit(&huart2, (uint8_t *)&Uart3_RxBuff, Uart3_Rx_Cnt,0xFFFF);//将485串口收到的信息发送到串口2
+//											Uart3_Rx_Cnt = 0;
+//											memset(Uart3_RxBuff,0x00,sizeof(Uart3_RxBuff)); //清空数组
+//										}
+//									}
+//									HAL_UART_Receive_IT(&huart1, (uint8_t *)&aRxBuffer1, 1);
+//									HAL_UART_Receive_IT(&huart2, (uint8_t *)&aRxBuffer2, 1);}
 		
 		
 							
@@ -741,50 +513,78 @@ void sort(int* a,int len)
         begin++;
     }
 }
-
-
-void SET4G(void){
-	delay_ms(300);
-	printf("AT+CGSOCKCONT=1,\"IP\",\"CMNET\"\r\n");
-	delay_ms(300);
-	printf("AT+CSOCKSETPN=1\r\n");
-	delay_ms(300);
-	printf("AT+NETOPEN\r\n");
-	delay_ms(300);
-	printf("AT+CIPOPEN=1,\"UDP\",,,20030\r\n");
-	delay_ms(300);
-	printf("AT+CIPSEND=1,18,\"219.128.73.196\",20030\r\n");
-	delay_ms(300);
-	printf("4G模块初始化完成\r\n");
-//	HAL_GPIO_TogglePin(BEE_GPIO_Port,BEE_Pin);
-//	delay_ms(1000);
-//	HAL_GPIO_TogglePin(BEE_GPIO_Port,BEE_Pin);
+//*************************************漏电设定***************************************//
+void set_limitA(int a){
+	flash[0]=I;
+	flash[1]=limit=a;
+	
+	STMFLASH_Write(FLASH_SAVE_ADDR,(u32*)flash,2);
+	printf("limit=%i\r\n",limit);
 	
 }
+
+//********************************************设定漏电电流*************************************//
+void set_I(int i)
+{	
+	flash[0]=I=i;
+	flash[1]=limit;
+	STMFLASH_Write(FLASH_SAVE_ADDR,(u32*)flash,2);
+}
+
+//***************************************时间设定*****************************************//
+
+
+
+//void SET4G(void){
+//	delay_ms(300);
+//	printf("AT+CGSOCKCONT=1,\"IP\",\"CMNET\"\r\n");
+//	delay_ms(300);
+//	printf("AT+CSOCKSETPN=1\r\n");
+//	delay_ms(300);
+//	printf("AT+NETOPEN\r\n");
+//	delay_ms(300);
+//	printf("AT+CIPOPEN=1,\"UDP\",,,20030\r\n");
+//	delay_ms(300);
+//	printf("AT+CIPSEND=1,18,\"219.128.73.196\",20030\r\n");
+//	delay_ms(300);
+//	printf("4G模块初始化完成\r\n");
+////	HAL_GPIO_TogglePin(BEE_GPIO_Port,BEE_Pin);
+////	delay_ms(1000);
+////	HAL_GPIO_TogglePin(BEE_GPIO_Port,BEE_Pin);
+//	
+//}
  
 void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
 {
 	
 	tim_count++;
-	if(tim_count==1000){HAL_GPIO_TogglePin(LED2_GPIO_Port,LED2_Pin);tim_count=0;
-						time_out++;
-						connect_confirm++;
-						led_flag=!led_flag;
-						if(flag){	HAL_GPIO_WritePin(KM1_GPIO_Port,KM1_Pin,GPIO_PIN_SET);
-											beep_flag=1;}
+	if(tim_count==1000)
+		{	
+			HAL_GPIO_TogglePin(LED2_GPIO_Port,LED2_Pin);tim_count=0;
+			time_out++;
+			connect_confirm++;
+			led_flag=!led_flag;
+			if(flag)
+				{	
+					HAL_GPIO_WritePin(KM1_GPIO_Port,KM1_Pin,GPIO_PIN_SET);
+					beep_flag=1;
+				}
 						
 					
 									
-									}
+		}
 						
-						if(led_flag){if(flag)HAL_GPIO_WritePin(LED3_GPIO_Port,LED3_Pin,GPIO_PIN_SET);}
-						else{ if(flag)HAL_GPIO_WritePin(LED3_GPIO_Port,LED3_Pin,GPIO_PIN_RESET);}			
-						if(beep_flag)HAL_GPIO_TogglePin(BEEP_GPIO_Port,BEEP_Pin);
+		if(led_flag){if(flag)HAL_GPIO_WritePin(LED3_GPIO_Port,LED3_Pin,GPIO_PIN_SET);}
+		else{ if(flag)HAL_GPIO_WritePin(LED3_GPIO_Port,LED3_Pin,GPIO_PIN_RESET);}			
+		if(beep_flag&&led_flag)HAL_GPIO_TogglePin(BEEP_GPIO_Port,BEEP_Pin);
 						
 	
-	if(!HAL_GPIO_ReadPin(M1_GPIO_Port,M1_Pin)){flag=0;HAL_GPIO_WritePin(KM1_GPIO_Port,KM1_Pin,GPIO_PIN_RESET);
-																						HAL_GPIO_WritePin(LED3_GPIO_Port,LED3_Pin,GPIO_PIN_RESET);
-																						beep_flag=0;HAL_GPIO_WritePin(BEEP_GPIO_Port,BEEP_Pin,GPIO_PIN_RESET);}			
+	if(!HAL_GPIO_ReadPin(KEY1_GPIO_Port,KEY1_Pin))
+		{
+			flag=0;HAL_GPIO_WritePin(KM1_GPIO_Port,KM1_Pin,GPIO_PIN_RESET);
+			HAL_GPIO_WritePin(LED3_GPIO_Port,LED3_Pin,GPIO_PIN_RESET);
+			beep_flag=0;HAL_GPIO_WritePin(BEEP_GPIO_Port,BEEP_Pin,GPIO_PIN_RESET);
+		}			
 }
 /* USER CODE END 4 */
 
