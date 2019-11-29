@@ -55,7 +55,7 @@ extern "C" {
 void Error_Handler(void);
 
 /* USER CODE BEGIN EFP */
-void set_I(int i);
+//void set_I(int i);
 void set_limitA(int a);
 /* USER CODE END EFP */
 
@@ -89,8 +89,8 @@ void set_limitA(int a);
 #define LED1_Pin GPIO_PIN_1
 #define LED1_GPIO_Port GPIOE
 /* USER CODE BEGIN Private defines */
-extern uint8_t USART_RX_STA;
-extern uint8_t USART_RX_BUF[1];
+extern uint16_t USART_RX_STA;
+extern uint8_t USART_RX_BUF[200];
 
 /* USER CODE END Private defines */
 

@@ -20,7 +20,7 @@ struct _m_usmart_nametab usmart_nametab[]=
  	(void*)RTC_Set_Date,"u8 RTC_Set_Date(u8 year,u8 month,u8 date,u8 week)",	
 //	(void*)set_limit,"void set_limit(i1, i2, i3, i4, i5, i6, i7, i8)分别设定漏电阈值",
 	(void*)set_limitA,"void set_limitA(int a) 设置8路漏电阈值",
-	(void*)set_I,"void set_I(int i) 设置最大允许漏电电流",
+	//(void*)set_I,"void set_I(int i) 设置最大允许漏电电流",
 //	(void*)reset_4Gtimer,"void reset_4Gtimer(void) 重置4G连接超时计时器",
 // 	(void*)RTC_Set_AlarmA,"void RTC_Set_AlarmA(u8 week,u8 hour,u8 min,u8 sec)",		   			  	    
 // 	(void*)RTC_Set_WakeUp,"void RTC_Set_WakeUp(u8 wksel,u16 cnt)",			
