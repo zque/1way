@@ -235,6 +235,7 @@ void TIM4_IRQHandler(void)
     if(__HAL_TIM_GET_IT_SOURCE(&TIM4_Handler,TIM_IT_UPDATE)==SET)//溢出中断
     {
         usmart_dev.scan();	//执行usmart扫描
+		//printf("yoooooooooo");
         __HAL_TIM_SET_COUNTER(&TIM4_Handler,0);;    //清空定时器的CNT
         __HAL_TIM_SET_AUTORELOAD(&TIM4_Handler,100);//恢复原来的设置
     }

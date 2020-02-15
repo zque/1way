@@ -91,7 +91,7 @@
 
 #define SP_TYPE_DEC      	0  //10进制参数显示
 #define SP_TYPE_HEX       	1  //16进制参数显示
-
+void Timer4_Init(u16 arr,u16 psc);
 
  //函数名列表	 
 struct _m_usmart_nametab

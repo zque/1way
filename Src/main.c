@@ -88,8 +88,8 @@ float I0_error=0;
 int printf_flag=1;
 uint8_t input_read ;
 u32 adc[100];
-u16 USART_RX_STA;
-u8 USART_RX_BUF[200];
+//u16 USART_RX_STA;
+//u8 USART_RX_BUF[200];
 RTC_DateTypeDef sdatestructure;
 RTC_TimeTypeDef stimestructure;
 int year,month,date;
@@ -145,6 +145,7 @@ float cos1=0;
 float cos0=0;
 int har=0;
 int flag=0;
+float Itemp;
 
 const unsigned char auchCRCLo[]={
 	0x00, 0xC0, 0xC1, 0x01, 0xC3, 0x03, 0x02, 0xC2, 0xC6, 0x06,
@@ -219,6 +220,7 @@ int abs(int a);
 int filter_M(int *filter,int len);
 unsigned int getCRC(unsigned char b[],unsigned int len);
 void set_I(void);
+ float getSqrt(float*a,int len);
 
 /* USER CODE END PFP */
 
@@ -276,6 +278,7 @@ int main(void)
   HAL_UART_Receive_IT(&huart2, (uint8_t *)&aRxBuffer2,1);
   HAL_UART_Receive_IT(&huart1, (uint8_t *)&aRxBuffer1, 1);
   HAL_TIM_Base_Start_IT(&htim1);
+//Timer4_Init(1000 ,240);
   
   //usmart_dev.init(240); 
   STMFLASH_Read(FLASH_SAVE_ADDR,(u32*)flash,9);
@@ -329,13 +332,19 @@ int main(void)
 						max1=0;
 						for(i=0;i<200;i++){	if(avg1[i]>max1)max1=avg1[i];};	
 						for(i=0;i<200;i++){	if(avg1[i]==max1)p1=i;}	
-						for(i=0;i<400;i++){	cut1[i]=avg1[i+p1];}}
+						for(i=0;i<400;i++){	cut1[i]=avg1[i+p1];}
+				Itemp=Imax1;
+				Imax1=getSqrt(avg1,1000);
+		}
 		else{for(i=0;i<1024;i++){	input0[2*i]=avg0[i]=(adc0[i]+adc0[i+1]+adc0[i+2]+adc0[i+3]+adc0[i+4])/5.0;	input0[2*i+1]=0;}
 			
 						max0=0;
 						for(i=0;i<200;i++){	if(avg0[i]>max0)max0=avg0[i];};	
 						for(i=0;i<200;i++){	if(avg0[i]==max0)p0=i;}
-						for(i=0;i<400;i++){	cut0[i]=avg0[i+p0];}}
+						for(i=0;i<400;i++){	cut0[i]=avg0[i+p0];}
+				Itemp=Imax0;		
+				Imax0=getSqrt(avg0,1000);
+		}
 		
 						
 						
@@ -348,21 +357,21 @@ int main(void)
 							
 							
 	//***************************************FFT计算************************************************************//
-		if(sw){	arm_cfft_radix4_f32(&scfft,input1);
-						arm_cmplx_mag_f32(input1,output1,FFT_LENGTH);
-						Imax1=0;
-						for(i=1;i<100;i++){	if(output1[i]>Imax1)Imax1=output1[i];}}
-		else if(start){ 	
-				arm_cfft_radix4_f32(&scfft,input0);
-				arm_cmplx_mag_f32(input0,output0,FFT_LENGTH);
-				Imax0=0;
-				for(i=1;i<100;i++){	if(output0[i]>Imax0)Imax0=output0[i];}}
+//		if(sw){	arm_cfft_radix4_f32(&scfft,input1);
+//						arm_cmplx_mag_f32(input1,output1,FFT_LENGTH);
+//						Imax1=0;
+//						for(i=1;i<100;i++){	if(output1[i]>Imax1)Imax1=output1[i];}}
+//		else if(start){ 	
+//				arm_cfft_radix4_f32(&scfft,input0);
+//				arm_cmplx_mag_f32(input0,output0,FFT_LENGTH);
+//				Imax0=0;
+//				for(i=1;i<100;i++){	if(output0[i]>Imax0)Imax0=output0[i];}}
 		
 				
 				
 	//*****************************************************前后波形振幅比较******************//				
-		if(start){if(sw){if((Imax1-Imax0)>amp_value)har=(int)(Imax1-Imax0);}
-							else{	if((Imax0-Imax1)>amp_value)har=(int)(Imax0-Imax1);}}
+		if(start){if(sw){if((Imax1-Itemp)>amp_value)har=(int)(Imax1-Itemp);}
+							else{	if((Imax0-Itemp)>amp_value)har=(int)(Imax0-Itemp);}}
 		
 							
 							
@@ -391,7 +400,7 @@ int main(void)
 			printf("%i\t%i\r\n",flash[0],flash[1]);
 		}			
 			
-			printf("%i\t%i\r\n",limit,I);
+			//printf("%i\t%i\r\n",limit,I);
 //		int crc=getCRC(test,6);
 //		uint8_t CRCH=crc>>8;
 //		uint8_t CRCL=crc&0x00ff;	
@@ -515,90 +524,90 @@ void SystemClock_Config(void)
 //	OSIntExit();  											 
 //#endif
 //} 
-void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart)
-{
-  /* Prevent unused argument(s) compilation warning */
-  UNUSED(huart);
-  /* NOTE: This function Should not be modified, when the callback is needed,
-           the HAL_UART_TxCpltCallback could be implemented in the user file
-   */
-	if(huart->Instance==USART2)//如果是串口1
-	{
-//		printf("********************");
-//		//if(aRxBuffer2==0x23){USART_RX_STA|=0x8000;}//接收完成了 
-//		if((USART_RX_STA&0x8000)==0)//接收未完成
-//		{	//printf("*********");
-//			if(USART_RX_STA&0x4000)//接收到了0x0d
-//			{	
-//				if(aRxBuffer2[0]!=0x0a)USART_RX_STA=0;//接收错误,重新开始
-//				else {printf("***************");USART_RX_STA|=0x8000;}	//接收完成了 USART_RX_STA=0;
-//			}
-//			else //还没收到0X0D
-//			{	
-//				if(aRxBuffer2[0]==0x0d)USART_RX_STA|=0x4000;
-//				else
-//				{
-//					USART_RX_BUF[USART_RX_STA]=aRxBuffer2[0] ;//&0X3FFF
-//					USART_RX_STA++;
-//					if(USART_RX_STA>(200))USART_RX_STA=0;//接收数据错误,重新开始接收	  
-//				}		 
-//			}
-//			
-//		}
-//		HAL_UART_Receive_IT(&huart2, (uint8_t *)&aRxBuffer2, 1);  //再开启接收中断
-	}
+//void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart)
+//{
+//  /* Prevent unused argument(s) compilation warning */
+//  UNUSED(huart);
+//  /* NOTE: This function Should not be modified, when the callback is needed,
+//           the HAL_UART_TxCpltCallback could be implemented in the user file
+//   */
+//	if(huart->Instance==USART2)//如果是串口1
+//	{
+////		printf("********************");
+////		//if(aRxBuffer2==0x23){USART_RX_STA|=0x8000;}//接收完成了 
+////		if((USART_RX_STA&0x8000)==0)//接收未完成
+////		{	//printf("*********");
+////			if(USART_RX_STA&0x4000)//接收到了0x0d
+////			{	
+////				if(aRxBuffer2[0]!=0x0a)USART_RX_STA=0;//接收错误,重新开始
+////				else {printf("***************");USART_RX_STA|=0x8000;}	//接收完成了 USART_RX_STA=0;
+////			}
+////			else //还没收到0X0D
+////			{	
+////				if(aRxBuffer2[0]==0x0d)USART_RX_STA|=0x4000;
+////				else
+////				{
+////					USART_RX_BUF[USART_RX_STA]=aRxBuffer2[0] ;//&0X3FFF
+////					USART_RX_STA++;
+////					if(USART_RX_STA>(200))USART_RX_STA=0;//接收数据错误,重新开始接收	  
+////				}		 
+////			}
+////			
+////		}
+////		HAL_UART_Receive_IT(&huart2, (uint8_t *)&aRxBuffer2, 1);  //再开启接收中断
+//	}
 
-									
-	if(huart->Instance == USART1)
-		{
-			if(Uart3_Rx_Cnt >= 255)  //溢出判断
-			{
-			
-				Uart3_Rx_Cnt = 0;
-				memset(Uart3_RxBuff,0x00,sizeof(Uart3_RxBuff));
-				//HAL_UART_Transmit(&huart1, (uint8_t *)&cAlmStr, sizeof(cAlmStr),0xFFFF);	
-//										if (aRxBuffer1==03)i=1;
-//										if(i){if(aRxBuffer1==04)
-			}
-			else
-			{	uartTimer=0;
-				Uart3_RxBuff[Uart3_Rx_Cnt++] = aRxBuffer1[0];   //接收数据转存
-					//HAL_GPIO_TogglePin(BEE_GPIO_Port,BEE_Pin);
-				
-//										if((Uart3_RxBuff[0] == 0x03)&&(Uart3_RxBuff[1] == 0x04)&&rxDone) //判断结束位
-//										{
-////											HAL_UART_Transmit(&huart2, (uint8_t *)&Uart3_RxBuff, Uart3_Rx_Cnt,0xFFFF);//将485串口收到的信息发送到串口2
-//											Uart3_Rx_Cnt = 0;
-//											memset(Uart3_RxBuff,0x00,sizeof(Uart3_RxBuff)); //清空数组
-//										}
-			}
-//			HAL_UART_Transmit(&huart2, (uint8_t *)&aRxBuffer1, 1,0xFFFF);
-			HAL_UART_Receive_IT(&huart1, (uint8_t *)&aRxBuffer1, 1);
-		}
-									
-							
-}
+//									
+//	if(huart->Instance == USART1)
+//		{
+//			if(Uart3_Rx_Cnt >= 255)  //溢出判断
+//			{
+//			
+//				Uart3_Rx_Cnt = 0;
+//				memset(Uart3_RxBuff,0x00,sizeof(Uart3_RxBuff));
+//				//HAL_UART_Transmit(&huart1, (uint8_t *)&cAlmStr, sizeof(cAlmStr),0xFFFF);	
+////										if (aRxBuffer1==03)i=1;
+////										if(i){if(aRxBuffer1==04)
+//			}
+//			else
+//			{	uartTimer=0;
+//				Uart3_RxBuff[Uart3_Rx_Cnt++] = aRxBuffer1[0];   //接收数据转存
+//					//HAL_GPIO_TogglePin(BEE_GPIO_Port,BEE_Pin);
+//				
+////										if((Uart3_RxBuff[0] == 0x03)&&(Uart3_RxBuff[1] == 0x04)&&rxDone) //判断结束位
+////										{
+//////											HAL_UART_Transmit(&huart2, (uint8_t *)&Uart3_RxBuff, Uart3_Rx_Cnt,0xFFFF);//将485串口收到的信息发送到串口2
+////											Uart3_Rx_Cnt = 0;
+////											memset(Uart3_RxBuff,0x00,sizeof(Uart3_RxBuff)); //清空数组
+////										}
+//			}
+////			HAL_UART_Transmit(&huart2, (uint8_t *)&aRxBuffer1, 1,0xFFFF);
+//			HAL_UART_Receive_IT(&huart1, (uint8_t *)&aRxBuffer1, 1);
+//		}
+//									
+//							
+//}
 //**************************************printf*****************************//
 int fputc(int ch, FILE *f)
 { 	if(printf_flag){
 			while((USART2->ISR&0X40)==0);  
 			USART2->TDR=(uint8_t)ch; } 
-		else{while((USART3->ISR&0X40)==0);
+		else{while((USART1->ISR&0X40)==0);
 				USART1->TDR=(uint8_t)ch;}
 	return ch;
 }
 
 int abs(int a){if(a>=0)return a;else return -a;}
 //********************************************限幅***************************************//
-void filter_A(int * a){for(i=1;i<1020;i++){
-			if(((a[i]-a[i-1])>limit_A && (a[i]-a[i+1])>limit_A)||((a[i-1]-a[i])>limit_A && (a[i+1]-a[i])>limit_A)) a[i]=a[i-1];
-			if(((a[i]-a[i-1])>limit_A && (a[i+1]-a[i+2])>limit_A)||((a[i-1]-a[i])>limit_A && (a[i+2]-a[i+1])>limit_A)) a[i]=a[i+1]=a[i-1];
-			if(((a[i]-a[i-1])>limit_A && (a[i+3]-a[i+2])>limit_A)||((a[i-1]-a[i])>limit_A && (a[i+2]-a[i+3])>limit_A)) a[i+2]=a[i]=a[i+1]=a[i-1];
-}
-		
-
-
-}
+void filter_A(int * a){for(i=8;i<1000;i++){
+//			if(abs(a[i]-a[i-1])>limit_A && abs(a[i]-a[i+1])>limit_A) a[i]=a[i-1];
+//			if(abs(a[i]-a[i-1])>limit_A && abs(a[i+1]-a[i+2])>limit_A) a[i]=a[i+1]=a[i-1];
+//			if(abs(a[i]-a[i-1])>limit_A && abs(a[i+3]-a[i+2])>limit_A) a[i+2]=a[i]=a[i+1]=a[i-1];
+			if(((a[i]-a[i-8])>200)&&((a[i]-a[i+8])>200))a[i+5]=a[i+4]=a[i+3]=a[i+2]=a[i+1]=a[i]=a[i-1]=a[i-2]=a[i-3]=a[i-4]=a[i-5];
+			if(((a[i-8]-a[i])>200)&&((a[i+8]-a[i])>200))a[i+5]=a[i+4]=a[i+3]=a[i+2]=a[i+1]=a[i]=a[i-1]=a[i-2]=a[i-3]=a[i-4]=a[i-5];
+			//if((i>10)&&(abs(a[i]-a[i-1])>200))a[i]=a[i-1];
+			//if(abs(a[i]-a[i-1])>50)a[i]=a[i-1];
+}}
 
 
 
@@ -672,6 +681,26 @@ void set_I(void)
 	}
 	
 }
+
+float getSqrt(float*a,int len)
+{
+	float temp=0;
+	float zero=0;
+	for(int i=0;i<len;i++)
+	{
+		zero+=a[i];
+		//printf("%f\r\n",a[i]);
+	}
+	//printf("zero:%f\r\n",zero);
+	zero=zero/len;
+	//printf("zero;%f\r\n",zero);
+	for(int i=0;i<len;i++)
+	{
+		temp+=((a[i]-zero)*(a[i]-zero));
+	}
+	return sqrtf(temp)*100;
+}
+
 
 //***************************************时间设定*****************************************//
 
