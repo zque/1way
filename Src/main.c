@@ -38,8 +38,9 @@
 #include "arm_math.h"
 #include "usmart.h"
 #include "stmflash.h"
+#define  aprint(...)	{HAL_GPIO_WritePin(RE_GPIO_Port,RE_Pin,GPIO_PIN_SET);printf(__VA_ARGS__);HAL_GPIO_WritePin(RE_GPIO_Port,RE_Pin,GPIO_PIN_RESET);}
 #define FFT_LENGTH 		1024
-#define adc2i					670							//adc转化成电流i的比值
+//#define adc2i					670							//adc转化成电流i的比值
 #define bee				HAL_GPIO_To
 #define FLASH_SAVE_ADDR  0X08020000 	//设置FLASH 保存地址(必须为4的倍数，且所在扇区,要大于本代码所占用到的扇区.
 										//否则,写操作的时候,可能会导致擦除整个扇区,从而引起部分程序丢失.引起死机.
@@ -88,13 +89,16 @@ float I0_error=0;
 int printf_flag=1;
 uint8_t input_read ;
 u32 adc[100];
+int adc2i;
+u8 waveFlag=0;
+
 //u16 USART_RX_STA;
 //u8 USART_RX_BUF[200];
 RTC_DateTypeDef sdatestructure;
 RTC_TimeTypeDef stimestructure;
 int year,month,date;
 int hour,minute,second;
-int flash[2];
+int flash[9];
 int limit;
 int I;			
 u8 test[] ={0x03, 0x04,0x00,0x01,0x02,0x00};
@@ -287,17 +291,14 @@ int main(void)
   filter_index = filter_len/2;
   if(flash[0]>0)limit=flash[0]; else limit =100;
   if(flash[1]>0)I=flash[1];else I=2000;
+	if(flash[2]>0)adc2i=flash[2];else adc2i=1000;
  // HAL_ADC_Start(&hadc3);
  // HAL_ADC_Start_DMA(&hadc3,adc,100);
-  amp_value=(adc2i*limit);			//限制漏电电流转换为波形有效幅值
-									//频谱幅值与波形有效值关系： 		波形有效值=频谱幅值*2/FFT_LEANGTH
-									//波形有效值与漏电电流关系：		ADC测得电压=参考电压(3.3)/(ADC分辨率/2)*波形有效值
-									//								互感器电流=ADC测得电压/负载电阻(内部负载电阻为70欧）
-									//								漏电电流=互感器电流*1000(1000为互感器的线圈比1000：1）
+  amp_value=(adc2i*limit);			
 									
 			
 
-	input_read = (GPIOH->IDR-->2)&0x0F;
+//	input_read = (GPIOH->IDR-->2)&0x0F;
   /* USER CODE END 2 */
 
   /* Infinite loop */
@@ -399,12 +400,20 @@ int main(void)
 			settingFlag=0;
 			printf("%i\t%i\r\n",flash[0],flash[1]);
 		}			
-			
+			aprint("test");
 			//printf("%i\t%i\r\n",limit,I);
 //		int crc=getCRC(test,6);
 //		uint8_t CRCH=crc>>8;
 //		uint8_t CRCL=crc&0x00ff;	
 //		printf("%x\t%x\t%x\r\n",crc,CRCH,CRCL);
+		if(waveFlag)
+		{
+			waveFlag=0;
+			for(int i=0;i<1000;i++)
+			{
+				aprint("%f\t%f\r\n",avg0[i],avg1[i]);
+			}
+		}
 								
   }
   /* USER CODE END 3 */
@@ -590,12 +599,16 @@ void SystemClock_Config(void)
 //**************************************printf*****************************//
 int fputc(int ch, FILE *f)
 { 	if(printf_flag){
-			while((USART2->ISR&0X40)==0);  
-			USART2->TDR=(uint8_t)ch; } 
-		else{while((USART1->ISR&0X40)==0);
-				USART1->TDR=(uint8_t)ch;}
+			while((USART1->ISR&0X40)==0);  
+			USART1->TDR=(uint8_t)ch; } 
+		else{while((USART2->ISR&0X40)==0);
+				USART2->TDR=(uint8_t)ch;}
 	return ch;
 }
+//void aprint(const char *a, ...)
+//{
+//	
+//}
 
 int abs(int a){if(a>=0)return a;else return -a;}
 //********************************************限幅***************************************//
