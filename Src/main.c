@@ -38,7 +38,7 @@
 #include "arm_math.h"
 #include "usmart.h"
 #include "stmflash.h"
-#define  aprint(...)	{HAL_GPIO_WritePin(RE_GPIO_Port,RE_Pin,GPIO_PIN_SET);printf(__VA_ARGS__);HAL_GPIO_WritePin(RE_GPIO_Port,RE_Pin,GPIO_PIN_RESET);}
+#define  aprint(...)	{HAL_GPIO_WritePin(RE_GPIO_Port,RE_Pin,GPIO_PIN_SET);printf(__VA_ARGS__);delay_us(15);HAL_GPIO_WritePin(RE_GPIO_Port,RE_Pin,GPIO_PIN_RESET);}
 #define FFT_LENGTH 		1024
 //#define adc2i					670							//adc转化成电流i的比值
 #define bee				HAL_GPIO_To
@@ -318,12 +318,12 @@ int main(void)
 //**************************************ADC采样***************************************************//		
 		if(sw){	for(i=0;i<1030;i++){for(k=0;k<filter_len;k++)filter1[k]=get_ADC(hadc3);
 																adc1[i]=filter_M(filter1,filter_len);
-																delay_us(85);}
+																delay_us(190);}
 						filter_A(adc1);
 																		
 		}else{for(i=0;i<1030;i++){for(k=0;k<filter_len;k++)filter1[k]=get_ADC(hadc3);
 																adc0[i]=filter_M(filter1,filter_len);
-																delay_us(85);}
+																delay_us(190);}
 						filter_A(adc0);
 		}
 		
@@ -378,17 +378,17 @@ int main(void)
 							
 							
 	//***************************************************报警****************************************//
-		if((cos1<0.95f)&&har){	flag=1;
-						memcpy(adc0,avg0,sizeof(adc0));
-						memcpy(adc1,avg1,sizeof(adc0));
-						har_error=har;
-						cos_error=cos1;
-						I1_error=Imax1;
-						I0_error=Imax0;
-						printf("AT+CIPSEND=1,52,\"219.128.73.196\",20030\r\n");
-						delay_ms(100);
-						printf("漏电电流11：%05i\t漏电电流10：%05i\t突变电流1：%05i",(int)Imax1/adc2i,(int)Imax0/adc2i,(har/adc2i));
-								har=0;}
+//		if((cos1<0.95f)&&har){	flag=1;
+//						memcpy(adc0,avg0,sizeof(adc0));
+//						memcpy(adc1,avg1,sizeof(adc0));
+//						har_error=har;
+//						cos_error=cos1;
+//						I1_error=Imax1;
+//						I0_error=Imax0;
+//						printf("AT+CIPSEND=1,52,\"219.128.73.196\",20030\r\n");
+//						delay_ms(100);
+//						printf("漏电电流11：%05i\t漏电电流10：%05i\t突变电流1：%05i",(int)Imax1/adc2i,(int)Imax0/adc2i,(har/adc2i));
+//								har=0;}
 //		for(i=0;i<1024;i++)printf("%i\r\n",adc0[i]);
 //		printf("*********************************");
 //		printf("%f\r\n",Imax1/adc2i);
@@ -400,7 +400,12 @@ int main(void)
 			settingFlag=0;
 			printf("%i\t%i\r\n",flash[0],flash[1]);
 		}			
-			aprint("test");
+		//	aprint("test123");
+//		HAL_GPIO_WritePin(RE_GPIO_Port,RE_Pin,GPIO_PIN_SET);
+//		printf("test3");//delay_us(15);
+//		HAL_GPIO_WritePin(RE_GPIO_Port,RE_Pin,GPIO_PIN_RESET);
+		
+		//printf("test1");
 			//printf("%i\t%i\r\n",limit,I);
 //		int crc=getCRC(test,6);
 //		uint8_t CRCH=crc>>8;

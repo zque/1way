@@ -320,6 +320,7 @@ void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart)
 	if(huart->Instance==USART2)//如果是串口1
 	{
 		if(aRxBuffer[0]==0x23)USART_RX_STA|=0x8000;	//接收完成了 
+		if(aRxBuffer[0]==0x06)waveFlag=1;
 		if((USART_RX_STA&0x8000)==0)//接收未完成
 		{
 			if(USART_RX_STA&0x4000)//接收到了0x0d
@@ -348,7 +349,7 @@ void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart)
 //			USART_RX_STA=0;
 //		}
 //		USART_RX_STA++;
-		printf("hello");
+		//printf("hello");
 		
 
 	}
@@ -389,7 +390,8 @@ void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart)
 //		HAL_UART_Receive_IT(&huart3, (uint8_t *)&aRxBuffer3, 1);}
 		{
 			//uartFlag=1;
-			if(aRxBuffer[0]==0x23)USART_RX_STA|=0x8000;	//接收完成了 
+			if(aRxBuffer[0]==0x23)USART_RX_STA|=0x8000;	//接收完成了
+			if(aRxBuffer[0]==0x06)waveFlag=1;
 		if((USART_RX_STA&0x8000)==0)//接收未完成
 		{
 			if(USART_RX_STA&0x4000)//接收到了0x0d

@@ -91,6 +91,7 @@ void set_limitA(int a);
 /* USER CODE BEGIN Private defines */
 extern uint16_t USART_RX_STA;
 extern uint8_t USART_RX_BUF[200];
+extern uint8_t waveFlag;
 
 /* USER CODE END Private defines */
 
