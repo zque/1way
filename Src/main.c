@@ -39,7 +39,7 @@
 #include "usmart.h"
 #include "stmflash.h"
 #include "stdlib.h"
-#define  aprint(...)	{HAL_GPIO_WritePin(RE_GPIO_Port,RE_Pin,GPIO_PIN_SET);printf(__VA_ARGS__);delay_us(15);HAL_GPIO_WritePin(RE_GPIO_Port,RE_Pin,GPIO_PIN_RESET);}
+#define  aprint(...)	{HAL_GPIO_WritePin(RE_GPIO_Port,RE_Pin,GPIO_PIN_SET);delay_us(200);printf(__VA_ARGS__);delay_us(200);HAL_GPIO_WritePin(RE_GPIO_Port,RE_Pin,GPIO_PIN_RESET);}
 #define FFT_LENGTH 		1024
 //#define adc2i					670							//adc转化成电流i的比值
 #define bee				HAL_GPIO_To
@@ -93,6 +93,8 @@ u32 adc[100];
 int adc2i;
 u8 waveFlag=0;
 uint8_t timeOutFlag=0;
+uint8_t cnt = 1 ;
+
 
 //u16 USART_RX_STA;
 //u8 USART_RX_BUF[200];
@@ -286,7 +288,7 @@ int main(void)
   delay_init(480);
   //HAL_GPIO_WritePin(RE_GPIO_Port,RE_Pin,GPIO_PIN_SET);
   HAL_UART_Receive_IT(&huart2, (uint8_t *)&aRxBuffer2,1);
-  HAL_UART_Receive_IT(&huart1, (uint8_t *)&aRxBuffer1, 1);
+  HAL_UART_Receive_IT(&huart1, (uint8_t *)&aRxBuffer2, 1);
   HAL_TIM_Base_Start_IT(&htim1);
 //Timer4_Init(1000 ,240);
   
@@ -405,7 +407,8 @@ int main(void)
 			set_I(0);
 			settingFlag=0;
 			printf("%i\t%i\r\n",flash[0],flash[1]);
-		}			
+		}
+			aprint("%f\r\n",Imax1/adc2i);
 		//	aprint("test123");
 //		HAL_GPIO_WritePin(RE_GPIO_Port,RE_Pin,GPIO_PIN_SET);
 //		printf("test3");//delay_us(15);
@@ -551,24 +554,28 @@ void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart)
   /* NOTE: This function Should not be modified, when the callback is needed,
            the HAL_UART_TxCpltCallback could be implemented in the user file
    */
-	if(huart->Instance==USART2)//如果是串口1
+	if(huart->Instance==USART1)//如果是串口1
 	{
-		if(aRxBuffer[0]==0x23)
+		if(aRxBuffer2[0]==0x23)
 		{
 			ufunc();
-			Uart2_Rx_Cnt=0;
+			//aprint("testtttttttttttttttttt");
+			
 			memset(USART_RX_BUF,0x00,200);
-			
-			
+			HAL_UART_Receive_IT(&huart1, (uint8_t *)&aRxBuffer2, 1);
+//			HAL_UART_Receive_IT(&huart2, (uint8_t *)&aRxBuffer2, 1);
+			cnt=0;
 		}
 		else
 		{
-			USART_RX_BUF[Uart2_Rx_Cnt]=aRxBuffer[0];
-			Uart2_Rx_Cnt++;
-			
+			USART_RX_BUF[cnt-1]=aRxBuffer2[0];
+			++cnt;
+			HAL_UART_Receive_IT(&huart1, (uint8_t *)&aRxBuffer2, 1);
 		}
-		HAL_UART_Receive_IT(&huart2, (uint8_t *)&aRxBuffer, 1);
+		
+		//HAL_UART_Receive_IT(&huart2, (uint8_t *)&aRxBuffer2, 1);
 	}
+	
 		
 //		USART_RX_BUF[USART_RX_STA&0X3FFF]=aRxBuffer[0] ;
 //		if(aRxBuffer[0]==0x23)
@@ -591,8 +598,9 @@ void ufunc(void)
 					
 					get_wave();
 					break;
-				case 'd':
+				case 'a':
 					set_adc2i();
+					break;
 				case 'i':
 					temp = atoi((char*)USART_RX_BUF+1);
 					if(temp)
@@ -713,7 +721,9 @@ void set_adc2i(void)
 //********************************************设定漏电电流*************************************//
 void set_I(int a)
 {	
-	
+	flash[0]=I=a;
+	STMFLASH_Write(FLASH_SAVE_ADDR,(u32*)flash,9);
+	get_info();
 //	int crc=getCRC(rxBuff,len-2);
 //    uint8_t CRCH=crc>>8;
 //    uint8_t CRCL=crc&0x00ff;
