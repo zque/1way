@@ -314,108 +314,108 @@ UART_HandleTypeDef UART1_Handler; //UART句柄
 //}
 
 
-void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart)
-{
+//void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart)
+//{
 
-	if(huart->Instance==USART2)//如果是串口1
-	{
-		if(aRxBuffer[0]==0x23)USART_RX_STA|=0x8000;	//接收完成了 
-		if(aRxBuffer[0]==0x06)waveFlag=1;
-		if((USART_RX_STA&0x8000)==0)//接收未完成
-		{
-			if(USART_RX_STA&0x4000)//接收到了0x0d
-			{
-				if(aRxBuffer[0]!=0x0a)USART_RX_STA=0;//接收错误,重新开始
-				else USART_RX_STA=0;//USART_RX_STA|=0x8000;	//接收完成了 
-			}
-			else //还没收到0X0D
-			{	
-				if(aRxBuffer[0]==0x0d)USART_RX_STA|=0x4000;
-				else
-				{
-					USART_RX_BUF[USART_RX_STA&0X3FFF]=aRxBuffer[0] ;
-					USART_RX_STA++;
-					if(USART_RX_STA>(USART_REC_LEN-1))USART_RX_STA=0;//接收数据错误,重新开始接收	  
-				}		 
-			}
-			
-		}
-		
-		
-//		USART_RX_BUF[USART_RX_STA&0X3FFF]=aRxBuffer[0] ;
-//		if(aRxBuffer[0]==0x23)
+//	if(huart->Instance==USART2)//如果是串口1
+//	{
+//		if(aRxBuffer[0]==0x23)USART_RX_STA|=0x8000;	//接收完成了 
+//		if(aRxBuffer[0]==0x06)waveFlag=1;
+//		if((USART_RX_STA&0x8000)==0)//接收未完成
 //		{
-//			USART_RX_STA|=0x8000;
-//			USART_RX_STA=0;
-//		}
-//		USART_RX_STA++;
-		//printf("hello");
-		
-
-	}
-	if(huart->Instance == USART1)
-//		{if(Uart3_Rx_Cnt >= 255)  //溢出判断
-//		{
-//			Uart3_Rx_Cnt = 0;
-//			memset(Uart3_RxBuff,0x00,sizeof(Uart3_RxBuff));
-//			HAL_UART_Transmit(&huart3, (uint8_t *)&cAlmStr, sizeof(cAlmStr),0xFFFF);	
-//		}
-//		else
-//		{
-//			Uart3_RxBuff[Uart3_Rx_Cnt++] = aRxBuffer3;   //接收数据转存
-//				//HAL_GPIO_TogglePin(BEE_GPIO_Port,BEE_Pin);
-//			if(aRxBuffer3==0x06){	printf_flag=0;
-//									HAL_GPIO_WritePin(RE_GPIO_Port,RE_Pin,GPIO_PIN_SET);
-//									for (int i=0;i<1024;i++){printf("%f\t%f\r\n",adc1[i],adc0[i]);}
-//									printf("相似度：%f\t漏电值1：%f\t漏电值0：%f\t突变值：%i\r\n",cos0,I1/530,I0/530,har/530);
-//									printf("漏电时间：\r\n");
-//									printf("%02d/%02d/%02d\r\n",2000 + year, month, date);
-//									printf("%02d:%02d:%02d\r\n",hour, minute, second);
-//									printf("当前时间：\r\n");
-//									HAL_RTC_GetTime(&hrtc, &stimestruct, RTC_FORMAT_BIN);
-//									HAL_RTC_GetDate(&hrtc, &sdatestruct, RTC_FORMAT_BIN);
-//									printf("%02d/%02d/%02d\r\n",2000 + sdatestruct.Year, sdatestruct.Month, sdatestruct.Date);
-//									printf("%02d:%02d:%02d\r\n",stimestruct.Hours, stimestruct.Minutes, stimestruct.Seconds);
-//									
-//									HAL_GPIO_WritePin(RE_GPIO_Port,RE_Pin,GPIO_PIN_RESET);
-//									printf_flag=1;
-//									}
-//			if((Uart3_RxBuff[Uart3_Rx_Cnt-1] == 0x0A)&&(Uart3_RxBuff[Uart3_Rx_Cnt-2] == 0x0D)) //判断结束位
+//			if(USART_RX_STA&0x4000)//接收到了0x0d
 //			{
-////											HAL_UART_Transmit(&huart2, (uint8_t *)&Uart3_RxBuff, Uart3_Rx_Cnt,0xFFFF);//将485串口收到的信息发送到串口2
-//				Uart3_Rx_Cnt = 0;
-//				memset(Uart3_RxBuff,0x00,sizeof(Uart3_RxBuff)); //清空数组
+//				if(aRxBuffer[0]!=0x0a)USART_RX_STA=0;//接收错误,重新开始
+//				else USART_RX_STA=0;//USART_RX_STA|=0x8000;	//接收完成了 
 //			}
+//			else //还没收到0X0D
+//			{	
+//				if(aRxBuffer[0]==0x0d)USART_RX_STA|=0x4000;
+//				else
+//				{
+//					USART_RX_BUF[USART_RX_STA&0X3FFF]=aRxBuffer[0] ;
+//					USART_RX_STA++;
+//					if(USART_RX_STA>(USART_REC_LEN-1))USART_RX_STA=0;//接收数据错误,重新开始接收	  
+//				}		 
+//			}
+//			
 //		}
-//		HAL_UART_Receive_IT(&huart3, (uint8_t *)&aRxBuffer3, 1);}
-		{
-			//uartFlag=1;
-			if(aRxBuffer[0]==0x23)USART_RX_STA|=0x8000;	//接收完成了
-			if(aRxBuffer[0]==0x06)waveFlag=1;
-		if((USART_RX_STA&0x8000)==0)//接收未完成
-		{
-			if(USART_RX_STA&0x4000)//接收到了0x0d
-			{
-				if(aRxBuffer[0]!=0x0a)USART_RX_STA=0;//接收错误,重新开始
-				else USART_RX_STA=0;//USART_RX_STA|=0x8000;	//接收完成了 
-			}
-			else //还没收到0X0D
-			{	
-				if(aRxBuffer[0]==0x0d)USART_RX_STA|=0x4000;
-				else
-				{
-					USART_RX_BUF[USART_RX_STA&0X3FFF]=aRxBuffer[0] ;
-					USART_RX_STA++;
-					if(USART_RX_STA>(USART_REC_LEN-1))USART_RX_STA=0;//接收数据错误,重新开始接收	  
-				}		 
-			}
-			
-		}
-		HAL_UART_Receive_IT(&huart1, (uint8_t *)&aRxBuffer, 1);
-		}
-}
- 
-//串口1中断服务程序
+//		
+//		
+////		USART_RX_BUF[USART_RX_STA&0X3FFF]=aRxBuffer[0] ;
+////		if(aRxBuffer[0]==0x23)
+////		{
+////			USART_RX_STA|=0x8000;
+////			USART_RX_STA=0;
+////		}
+////		USART_RX_STA++;
+//		//printf("hello");
+//		
+
+//	}
+//	if(huart->Instance == USART1)
+////		{if(Uart3_Rx_Cnt >= 255)  //溢出判断
+////		{
+////			Uart3_Rx_Cnt = 0;
+////			memset(Uart3_RxBuff,0x00,sizeof(Uart3_RxBuff));
+////			HAL_UART_Transmit(&huart3, (uint8_t *)&cAlmStr, sizeof(cAlmStr),0xFFFF);	
+////		}
+////		else
+////		{
+////			Uart3_RxBuff[Uart3_Rx_Cnt++] = aRxBuffer3;   //接收数据转存
+////				//HAL_GPIO_TogglePin(BEE_GPIO_Port,BEE_Pin);
+////			if(aRxBuffer3==0x06){	printf_flag=0;
+////									HAL_GPIO_WritePin(RE_GPIO_Port,RE_Pin,GPIO_PIN_SET);
+////									for (int i=0;i<1024;i++){printf("%f\t%f\r\n",adc1[i],adc0[i]);}
+////									printf("相似度：%f\t漏电值1：%f\t漏电值0：%f\t突变值：%i\r\n",cos0,I1/530,I0/530,har/530);
+////									printf("漏电时间：\r\n");
+////									printf("%02d/%02d/%02d\r\n",2000 + year, month, date);
+////									printf("%02d:%02d:%02d\r\n",hour, minute, second);
+////									printf("当前时间：\r\n");
+////									HAL_RTC_GetTime(&hrtc, &stimestruct, RTC_FORMAT_BIN);
+////									HAL_RTC_GetDate(&hrtc, &sdatestruct, RTC_FORMAT_BIN);
+////									printf("%02d/%02d/%02d\r\n",2000 + sdatestruct.Year, sdatestruct.Month, sdatestruct.Date);
+////									printf("%02d:%02d:%02d\r\n",stimestruct.Hours, stimestruct.Minutes, stimestruct.Seconds);
+////									
+////									HAL_GPIO_WritePin(RE_GPIO_Port,RE_Pin,GPIO_PIN_RESET);
+////									printf_flag=1;
+////									}
+////			if((Uart3_RxBuff[Uart3_Rx_Cnt-1] == 0x0A)&&(Uart3_RxBuff[Uart3_Rx_Cnt-2] == 0x0D)) //判断结束位
+////			{
+//////											HAL_UART_Transmit(&huart2, (uint8_t *)&Uart3_RxBuff, Uart3_Rx_Cnt,0xFFFF);//将485串口收到的信息发送到串口2
+////				Uart3_Rx_Cnt = 0;
+////				memset(Uart3_RxBuff,0x00,sizeof(Uart3_RxBuff)); //清空数组
+////			}
+////		}
+////		HAL_UART_Receive_IT(&huart3, (uint8_t *)&aRxBuffer3, 1);}
+//		{
+//			//uartFlag=1;
+//			if(aRxBuffer[0]==0x23)USART_RX_STA|=0x8000;	//接收完成了
+//			if(aRxBuffer[0]==0x06)waveFlag=1;
+//		if((USART_RX_STA&0x8000)==0)//接收未完成
+//		{
+//			if(USART_RX_STA&0x4000)//接收到了0x0d
+//			{
+//				if(aRxBuffer[0]!=0x0a)USART_RX_STA=0;//接收错误,重新开始
+//				else USART_RX_STA=0;//USART_RX_STA|=0x8000;	//接收完成了 
+//			}
+//			else //还没收到0X0D
+//			{	
+//				if(aRxBuffer[0]==0x0d)USART_RX_STA|=0x4000;
+//				else
+//				{
+//					USART_RX_BUF[USART_RX_STA&0X3FFF]=aRxBuffer[0] ;
+//					USART_RX_STA++;
+//					if(USART_RX_STA>(USART_REC_LEN-1))USART_RX_STA=0;//接收数据错误,重新开始接收	  
+//				}		 
+//			}
+//			
+//		}
+//		HAL_UART_Receive_IT(&huart1, (uint8_t *)&aRxBuffer, 1);
+//		}
+//}
+// 
+////串口1中断服务程序
 void USART2_IRQHandler(void)                	
 { 
 	u32 timeout=0;

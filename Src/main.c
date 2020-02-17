@@ -38,6 +38,7 @@
 #include "arm_math.h"
 #include "usmart.h"
 #include "stmflash.h"
+#include "stdlib.h"
 #define  aprint(...)	{HAL_GPIO_WritePin(RE_GPIO_Port,RE_Pin,GPIO_PIN_SET);printf(__VA_ARGS__);delay_us(15);HAL_GPIO_WritePin(RE_GPIO_Port,RE_Pin,GPIO_PIN_RESET);}
 #define FFT_LENGTH 		1024
 //#define adc2i					670							//adc转化成电流i的比值
@@ -91,6 +92,7 @@ uint8_t input_read ;
 u32 adc[100];
 int adc2i;
 u8 waveFlag=0;
+uint8_t timeOutFlag=0;
 
 //u16 USART_RX_STA;
 //u8 USART_RX_BUF[200];
@@ -223,8 +225,12 @@ void filter_A(int* a);
 int abs(int a);
 int filter_M(int *filter,int len);
 unsigned int getCRC(unsigned char b[],unsigned int len);
-void set_I(void);
+void set_I(int a);
  float getSqrt(float*a,int len);
+void get_info(void);
+void set_adc2i(void);
+void get_wave(void);
+void ufunc(void);
 
 /* USER CODE END PFP */
 
@@ -396,7 +402,7 @@ int main(void)
 		//if(test)printf("*****************");
 		if(settingFlag)
 		{
-			set_I();
+			set_I(0);
 			settingFlag=0;
 			printf("%i\t%i\r\n",flash[0],flash[1]);
 		}			
@@ -538,69 +544,78 @@ void SystemClock_Config(void)
 //	OSIntExit();  											 
 //#endif
 //} 
-//void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart)
-//{
-//  /* Prevent unused argument(s) compilation warning */
-//  UNUSED(huart);
-//  /* NOTE: This function Should not be modified, when the callback is needed,
-//           the HAL_UART_TxCpltCallback could be implemented in the user file
-//   */
-//	if(huart->Instance==USART2)//如果是串口1
-//	{
-////		printf("********************");
-////		//if(aRxBuffer2==0x23){USART_RX_STA|=0x8000;}//接收完成了 
-////		if((USART_RX_STA&0x8000)==0)//接收未完成
-////		{	//printf("*********");
-////			if(USART_RX_STA&0x4000)//接收到了0x0d
-////			{	
-////				if(aRxBuffer2[0]!=0x0a)USART_RX_STA=0;//接收错误,重新开始
-////				else {printf("***************");USART_RX_STA|=0x8000;}	//接收完成了 USART_RX_STA=0;
-////			}
-////			else //还没收到0X0D
-////			{	
-////				if(aRxBuffer2[0]==0x0d)USART_RX_STA|=0x4000;
-////				else
-////				{
-////					USART_RX_BUF[USART_RX_STA]=aRxBuffer2[0] ;//&0X3FFF
-////					USART_RX_STA++;
-////					if(USART_RX_STA>(200))USART_RX_STA=0;//接收数据错误,重新开始接收	  
-////				}		 
-////			}
-////			
-////		}
-////		HAL_UART_Receive_IT(&huart2, (uint8_t *)&aRxBuffer2, 1);  //再开启接收中断
-//	}
-
-//									
-//	if(huart->Instance == USART1)
+void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart)
+{
+  /* Prevent unused argument(s) compilation warning */
+  UNUSED(huart);
+  /* NOTE: This function Should not be modified, when the callback is needed,
+           the HAL_UART_TxCpltCallback could be implemented in the user file
+   */
+	if(huart->Instance==USART2)//如果是串口1
+	{
+		if(aRxBuffer[0]==0x23)
+		{
+			ufunc();
+			Uart2_Rx_Cnt=0;
+			memset(USART_RX_BUF,0x00,200);
+			
+			
+		}
+		else
+		{
+			USART_RX_BUF[Uart2_Rx_Cnt]=aRxBuffer[0];
+			Uart2_Rx_Cnt++;
+			
+		}
+		HAL_UART_Receive_IT(&huart2, (uint8_t *)&aRxBuffer, 1);
+	}
+		
+//		USART_RX_BUF[USART_RX_STA&0X3FFF]=aRxBuffer[0] ;
+//		if(aRxBuffer[0]==0x23)
 //		{
-//			if(Uart3_Rx_Cnt >= 255)  //溢出判断
-//			{
-//			
-//				Uart3_Rx_Cnt = 0;
-//				memset(Uart3_RxBuff,0x00,sizeof(Uart3_RxBuff));
-//				//HAL_UART_Transmit(&huart1, (uint8_t *)&cAlmStr, sizeof(cAlmStr),0xFFFF);	
-////										if (aRxBuffer1==03)i=1;
-////										if(i){if(aRxBuffer1==04)
-//			}
-//			else
-//			{	uartTimer=0;
-//				Uart3_RxBuff[Uart3_Rx_Cnt++] = aRxBuffer1[0];   //接收数据转存
-//					//HAL_GPIO_TogglePin(BEE_GPIO_Port,BEE_Pin);
-//				
-////										if((Uart3_RxBuff[0] == 0x03)&&(Uart3_RxBuff[1] == 0x04)&&rxDone) //判断结束位
-////										{
-//////											HAL_UART_Transmit(&huart2, (uint8_t *)&Uart3_RxBuff, Uart3_Rx_Cnt,0xFFFF);//将485串口收到的信息发送到串口2
-////											Uart3_Rx_Cnt = 0;
-////											memset(Uart3_RxBuff,0x00,sizeof(Uart3_RxBuff)); //清空数组
-////										}
-//			}
-////			HAL_UART_Transmit(&huart2, (uint8_t *)&aRxBuffer1, 1,0xFFFF);
-//			HAL_UART_Receive_IT(&huart1, (uint8_t *)&aRxBuffer1, 1);
+//			USART_RX_STA|=0x8000;
+//			USART_RX_STA=0;
 //		}
-//									
-//							
-//}
+//		USART_RX_STA++;
+		//printf("hello");
+
+									
+							
+}
+void ufunc(void)
+	{
+		int temp;
+			switch(USART_RX_BUF[0])
+			{
+				case 'w':
+					
+					get_wave();
+					break;
+				case 'd':
+					set_adc2i();
+				case 'i':
+					temp = atoi((char*)USART_RX_BUF+1);
+					if(temp)
+					{
+						set_I(temp);
+					}
+					break;
+				case 'l':
+					
+					temp = atoi((char*)USART_RX_BUF+1);
+					if(temp)
+					{
+						set_limitA(temp);
+					}
+					break;
+				case 'f':
+				
+					get_info();
+					break;
+					
+			}
+	}
+
 //**************************************printf*****************************//
 int fputc(int ch, FILE *f)
 { 	if(printf_flag){
@@ -666,37 +681,56 @@ void sort(int* a,int len)
         begin++;
     }
 }
+
+void get_info(void)
+{
+	aprint("limit=%i\r\nI=%i\r\nadc2i=%i",limit,I,adc2i);
+}
+
+void get_wave(void)
+{
+	for(int i=0;i<1000;i++)
+	{
+		aprint("%f\t%f\r\n",avg0[i],avg1[i]);
+	}
+}
 //*************************************漏电设定***************************************//
 void set_limitA(int a){
 	flash[0]=I;
 	flash[1]=limit=a;
 	
-	STMFLASH_Write(FLASH_SAVE_ADDR,(u32*)flash,2);
-	printf("limit=%i\r\n",limit);
+	STMFLASH_Write(FLASH_SAVE_ADDR,(u32*)flash,9);
+	get_info();
 	
+}
+void set_adc2i(void)
+{
+	flash[2]=adc2i=Imax1/400;
+	STMFLASH_Write(FLASH_SAVE_ADDR,(u32*)flash,9);
+	get_info();
 }
 
 //********************************************设定漏电电流*************************************//
-void set_I(void)
+void set_I(int a)
 {	
 	
-	int crc=getCRC(rxBuff,len-2);
-    uint8_t CRCH=crc>>8;
-    uint8_t CRCL=crc&0x00ff;
-	//HAL_UART_Transmit(&huart2, (uint8_t *)&rxBuff, len,0xFFFF);
-	if(CRCH==rxBuff[len-2]&&CRCL==rxBuff[len-1])
-	{	
-		printf("success");
-		if(rxBuff[3]==1)limit=((rxBuff[4]<<8)+rxBuff[5]);
-		if(rxBuff[3]==2)I=((rxBuff[4]<<8)+rxBuff[5]);
-		flash[0]=limit;
-		flash[1]=I;
-		STMFLASH_Write(FLASH_SAVE_ADDR,(u32*)flash,2);
-	}
-	else
-	{
-		printf("数据错误");
-	}
+//	int crc=getCRC(rxBuff,len-2);
+//    uint8_t CRCH=crc>>8;
+//    uint8_t CRCL=crc&0x00ff;
+//	//HAL_UART_Transmit(&huart2, (uint8_t *)&rxBuff, len,0xFFFF);
+//	if(CRCH==rxBuff[len-2]&&CRCL==rxBuff[len-1])
+//	{	
+//		printf("success");
+//		if(rxBuff[3]==1)limit=((rxBuff[4]<<8)+rxBuff[5]);
+//		if(rxBuff[3]==2)I=((rxBuff[4]<<8)+rxBuff[5]);
+//		flash[0]=limit;
+//		flash[1]=I;
+//		STMFLASH_Write(FLASH_SAVE_ADDR,(u32*)flash,2);
+//	}
+//	else
+//	{
+//		printf("数据错误");
+//	}
 	
 }
 
@@ -760,23 +794,23 @@ float getSqrt(float*a,int len)
  
 void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
 {
-	uartTimer++;
-	if(uartTimer>30)
-	{
-		if((Uart3_RxBuff[0] == 0x03)&&(Uart3_RxBuff[1] == 0x04))
-		{
-			//printf("***********************");
-			settingFlag=1;
-			len = Uart3_Rx_Cnt;
-			for(int i=0;i<Uart3_Rx_Cnt;i++)rxBuff[i]=Uart3_RxBuff[i];
-			memset(Uart3_RxBuff,0x00,sizeof(Uart3_RxBuff));
-		}
-		Uart3_Rx_Cnt=0;
-	}
+//	uartTimer++;
+//	if(uartTimer>30)
+//	{
+//		if((Uart3_RxBuff[0] == 0x03)&&(Uart3_RxBuff[1] == 0x04))
+//		{
+//			//printf("***********************");
+//			settingFlag=1;
+//			len = Uart3_Rx_Cnt;
+//			for(int i=0;i<Uart3_Rx_Cnt;i++)rxBuff[i]=Uart3_RxBuff[i];
+//			memset(Uart3_RxBuff,0x00,sizeof(Uart3_RxBuff));
+//		}
+//		Uart3_Rx_Cnt=0;
+//	}
 	tim_count++;
 	if(tim_count==1000)
 		{	
-			HAL_GPIO_TogglePin(LED2_GPIO_Port,LED2_Pin);tim_count=0;
+			HAL_GPIO_TogglePin(LED3_GPIO_Port,LED3_Pin);tim_count=0;
 			time_out++;
 			connect_confirm++;
 			led_flag=!led_flag;
@@ -790,15 +824,15 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
 									
 		}
 						
-		if(led_flag){if(flag)HAL_GPIO_WritePin(LED3_GPIO_Port,LED3_Pin,GPIO_PIN_SET);}
-		else{ if(flag)HAL_GPIO_WritePin(LED3_GPIO_Port,LED3_Pin,GPIO_PIN_RESET);}			
+		if(led_flag){if(flag)HAL_GPIO_WritePin(LED2_GPIO_Port,LED2_Pin,GPIO_PIN_SET);}
+		else{ if(flag)HAL_GPIO_WritePin(LED2_GPIO_Port,LED2_Pin,GPIO_PIN_RESET);}			
 		if(beep_flag&&led_flag)HAL_GPIO_TogglePin(BEEP_GPIO_Port,BEEP_Pin);
 						
 	
 	if(!HAL_GPIO_ReadPin(KEY1_GPIO_Port,KEY1_Pin))
 		{
 			flag=0;HAL_GPIO_WritePin(KM1_GPIO_Port,KM1_Pin,GPIO_PIN_RESET);
-			HAL_GPIO_WritePin(LED3_GPIO_Port,LED3_Pin,GPIO_PIN_RESET);
+			HAL_GPIO_WritePin(LED2_GPIO_Port,LED2_Pin,GPIO_PIN_RESET);
 			beep_flag=0;HAL_GPIO_WritePin(BEEP_GPIO_Port,BEEP_Pin,GPIO_PIN_RESET);
 		}			
 }
