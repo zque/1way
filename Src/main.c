@@ -94,7 +94,7 @@ int adc2i;
 u8 waveFlag=0;
 uint8_t timeOutFlag=0;
 uint8_t cnt = 1 ;
-
+u8 start1 =0,start2=0;
 
 //u16 USART_RX_STA;
 //u8 USART_RX_BUF[200];
@@ -143,6 +143,7 @@ int p1=0,p0=0;
 float A=0;
 float B=0;
 float AB=0;
+float adc00[1000],adc01[1000];
 
 float input1[2*FFT_LENGTH],input0[2*FFT_LENGTH];
 float output1[FFT_LENGTH],output0[FFT_LENGTH];
@@ -230,7 +231,7 @@ unsigned int getCRC(unsigned char b[],unsigned int len);
 void set_I(int a);
  float getSqrt(float*a,int len);
 void get_info(void);
-void set_adc2i(void);
+void set_adc2i(int a);
 void get_wave(void);
 void ufunc(void);
 
@@ -299,7 +300,7 @@ int main(void)
   filter_index = filter_len/2;
   if(flash[0]>0)limit=flash[0]; else limit =100;
   if(flash[1]>0)I=flash[1];else I=2000;
-	if(flash[2]>0)adc2i=flash[2];else adc2i=1000;
+	if(flash[2]>0)adc2i=flash[2];else adc2i=2682;
  // HAL_ADC_Start(&hadc3);
  // HAL_ADC_Start_DMA(&hadc3,adc,100);
   amp_value=(adc2i*limit);			
@@ -386,21 +387,22 @@ int main(void)
 							
 							
 	//***************************************************报警****************************************//
-//		if((cos1<0.95f)&&har){	flag=1;
-//						memcpy(adc0,avg0,sizeof(adc0));
-//						memcpy(adc1,avg1,sizeof(adc0));
-//						har_error=har;
-//						cos_error=cos1;
-//						I1_error=Imax1;
-//						I0_error=Imax0;
-//						printf("AT+CIPSEND=1,52,\"219.128.73.196\",20030\r\n");
-//						delay_ms(100);
-//						printf("漏电电流11：%05i\t漏电电流10：%05i\t突变电流1：%05i",(int)Imax1/adc2i,(int)Imax0/adc2i,(har/adc2i));
-//								har=0;}
+		if((((int)Imax1>(I*adc2i))||((int)Imax0>(I*adc2i))||har)&&start2){		flag=1;
+						memcpy(adc00,avg0,sizeof(adc00));
+						memcpy(adc01,avg1,sizeof(adc00));
+						har_error=har;
+						cos_error=cos1;
+						I1_error=Imax1;
+						I0_error=Imax0;
+						aprint("漏电电流11：%05i\t漏电电流10：%05i\t突变电流1：%05i",(int)Imax1/adc2i,(int)Imax0/adc2i,(har/adc2i));
+								har=0;}
 //		for(i=0;i<1024;i++)printf("%i\r\n",adc0[i]);
 //		printf("*********************************");
 //		printf("%f\r\n",Imax1/adc2i);
+		if(start1)start2=1;
+		if(start)start1=1;
 		start=1;
+		har=0;
 		//if(test)printf("*****************");
 		if(settingFlag)
 		{
@@ -408,7 +410,7 @@ int main(void)
 			settingFlag=0;
 			printf("%i\t%i\r\n",flash[0],flash[1]);
 		}
-			aprint("%f\r\n",Imax1/adc2i);
+		//	aprint("%f\r\n",Imax1/adc2i);
 		//	aprint("test123");
 //		HAL_GPIO_WritePin(RE_GPIO_Port,RE_Pin,GPIO_PIN_SET);
 //		printf("test3");//delay_us(15);
@@ -599,7 +601,11 @@ void ufunc(void)
 					get_wave();
 					break;
 				case 'a':
-					set_adc2i();
+					temp = atoi((char*)USART_RX_BUF+1);
+					if(temp)
+					{
+						set_adc2i(temp);
+					}
 					break;
 				case 'i':
 					temp = atoi((char*)USART_RX_BUF+1);
@@ -619,6 +625,9 @@ void ufunc(void)
 				case 'f':
 				
 					get_info();
+					break;
+				case 's':
+					aprint("%f\r\n",Imax1/adc2i);
 					break;
 					
 			}
@@ -699,21 +708,21 @@ void get_wave(void)
 {
 	for(int i=0;i<1000;i++)
 	{
-		aprint("%f\t%f\r\n",avg0[i],avg1[i]);
+		aprint("%f\t%f\r\n",adc00[i],adc01[i]);
 	}
 }
 //*************************************漏电设定***************************************//
 void set_limitA(int a){
-	flash[0]=I;
-	flash[1]=limit=a;
+	
+	flash[0]=limit=a;
 	
 	STMFLASH_Write(FLASH_SAVE_ADDR,(u32*)flash,9);
 	get_info();
 	
 }
-void set_adc2i(void)
+void set_adc2i(int a)
 {
-	flash[2]=adc2i=Imax1/400;
+	flash[2]=adc2i=Imax1/a;
 	STMFLASH_Write(FLASH_SAVE_ADDR,(u32*)flash,9);
 	get_info();
 }
@@ -721,7 +730,7 @@ void set_adc2i(void)
 //********************************************设定漏电电流*************************************//
 void set_I(int a)
 {	
-	flash[0]=I=a;
+	flash[1]=I=a;
 	STMFLASH_Write(FLASH_SAVE_ADDR,(u32*)flash,9);
 	get_info();
 //	int crc=getCRC(rxBuff,len-2);
@@ -820,7 +829,7 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
 	tim_count++;
 	if(tim_count==1000)
 		{	
-			HAL_GPIO_TogglePin(LED3_GPIO_Port,LED3_Pin);tim_count=0;
+			HAL_GPIO_TogglePin(LED1_GPIO_Port,LED1_Pin);tim_count=0;
 			time_out++;
 			connect_confirm++;
 			led_flag=!led_flag;
@@ -828,7 +837,7 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
 				{	
 					HAL_GPIO_WritePin(KM1_GPIO_Port,KM1_Pin,GPIO_PIN_SET);
 					beep_flag=1;
-				}
+				}   
 						
 					
 									
